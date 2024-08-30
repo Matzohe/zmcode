@@ -1,8 +1,7 @@
-# A DataLoader of CoCo Dataset
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-
+from ..utils import INIconfig
 
 class CoCoDataset(Dataset):
     def __init__(self, coco):

@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import ResidualAttentionBlock
-from utils.utils import LayerNorm
+from  ..utils import ResidualAttentionBlock
+from ..utils.utils import LayerNorm
 
 
 # Make a Transformer Encoder Block with Residual Attention Block.

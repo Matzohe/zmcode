@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-from utils import LayerNorm, QuickGELU
 from collections import OrderedDict
-
+from .utils import LayerNorm, QuickGELU
 
 class ResidualAttentionBlock(nn.Module):
     def __init__(self, d_model: int, n_head: int, attn_mask: torch.Tensor = None):
