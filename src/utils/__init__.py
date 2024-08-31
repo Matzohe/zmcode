@@ -2,3 +2,4 @@ from .AttentionPool2D import AttentionPool2d  # attention pooling for 4D (batch,
 from .ResNetBottleNeck import Bottleneck
 from .ResidualAttentionBlock import ResidualAttentionBlock
 from . import utils
+from . import DataLoader

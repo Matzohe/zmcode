@@ -3,6 +3,11 @@ import torch.nn as nn
 from dataclasses import dataclass, make_dataclass, field
 from typing import List, Dict
 import configparser
+import numpy as np
+import torch
+import cv2
+from torchvision import transforms
+from PIL import Image
 
 # ==================================================
 # Config Related Functions
@@ -62,3 +67,22 @@ class QuickGELU(nn.Module):
 # ==================================================
 # Functions for Image Segmentation
 # ==================================================
+
+
+# ==================================================
+# Functions for Image Preprocessing
+# ==================================================
+
+def ClipPreProcess(image_path: str) -> torch.Tensor:
+    # CLIP image preprocess function
+    # The hyperparameters in the Normalize is the average and standard deviation of ImageNet
+
+    image = Image.open(image_path)
+
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ])
+
+    return preprocess(image).unsqueeze(0)
