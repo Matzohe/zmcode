@@ -73,6 +73,8 @@ class QuickGELU(nn.Module):
 # Functions for Image Preprocessing
 # ==================================================
 
+
+# TODO: Transform the Image package to OpenCv, which is faster
 def ClipPreProcess(image_path: str) -> torch.Tensor:
     # CLIP image preprocess function
     # The hyperparameters in the Normalize is the average and standard deviation of ImageNet
