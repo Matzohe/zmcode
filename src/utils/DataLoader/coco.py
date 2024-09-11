@@ -8,7 +8,7 @@ import numpy as np
 from collections import OrderedDict
 import math
 
-from ..utils import ClipPreProcess
+from ..ImagePreporcessUitls import ClipPreProcess
 
 # coco_2017 dataset structure
 # coco_2017
@@ -35,7 +35,7 @@ from ..utils import ClipPreProcess
 # test目前只下载了两个json文件，这两个文件给图像的标注为图像的类别，并没有更多的描述，字典为'info', 'licenses', 'images', 'categories'
 
 class CoCoTrainDataset(Dataset):
-    def __init__(self, config, target="instances", mission="category_id", preprocesser=ClipPreProcess):
+    def __init__(self, config, target="instances", mission="category_id", preprocesser=ClipPreProcess, shuffle=False):
         # Expect the structure of coco dataset is the same with the structure of coco_2017
         # target list include "instances", "captions", "keypoints", et.al, see config.cfg for more details
         self.coco_root = config.DATASET["coco"]
@@ -77,6 +77,12 @@ class CoCoTrainDataset(Dataset):
 
         else:
             raise NotImplementedError("Haven't add this target into the CoCoDataset, please edit coco.py")
+        
+        # shuffle the ordered dict
+        if shuffle:
+            item = list(self.train_annotations.items())
+            np.random.shuffle(item)
+            self.train_annotations = OrderedDict(item)
 
     def __getitem__(self, index):
         image_list = []
@@ -95,10 +101,15 @@ class CoCoTrainDataset(Dataset):
 
     def __len__(self):
         return math.ceil(len(self.train_annotations) / self.batch_size)
+    
+    def shuffle(self):
+        item = list(self.train_annotations.items())
+        np.random.shuffle(item)
+        self.train_annotations = OrderedDict(item)
 
       
 class CoCoValDataset(Dataset):
-    def __init__(self, config, target="instances", mission="category_id", preprocesser=ClipPreProcess):
+    def __init__(self, config, target="instances", mission="category_id", preprocesser=ClipPreProcess, shuffle=False):
         # Expect the structure of coco dataset is the same with the structure of coco_2017
         # target list include "instances", "captions", "keypoints", et.al, see config.cfg for more details
         self.coco_root = config.DATASET["coco"]
@@ -139,6 +150,12 @@ class CoCoValDataset(Dataset):
 
         else:
             raise NotImplementedError("Haven't add this target into the CoCoDataset, please edit coco.py")
+        
+        # shuffle the ordered dict
+        if shuffle:
+            item = list(self.train_annotations.items())
+            np.random.shuffle(item)
+            self.train_annotations = OrderedDict(item)
 
     def __getitem__(self, index):
         image_list = []
@@ -157,3 +174,8 @@ class CoCoValDataset(Dataset):
 
     def __len__(self):
         return math.ceil(len(self.val_annotations) / self.batch_size)
+    
+    def shuffle(self):
+        item = list(self.train_annotations.items())
+        np.random.shuffle(item)
+        self.train_annotations = OrderedDict(item)
