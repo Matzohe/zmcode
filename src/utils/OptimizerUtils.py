@@ -3,9 +3,9 @@ import inspect
 
 
 def configure_optimizers(model, config):
-    weight_decay = float(config["MODEL"]["weight_decay"])
-    learning_rate = float(config["MODEL"]["lr"])
-    device_type = config["TRAINING"]["device"]
+    weight_decay = float(config.MODEL["weight_decay"])
+    learning_rate = float(config.MODEL["lr"])
+    device_type = config.TRAINING["device"]
 
     # start with all of the candidate parameters (that require grad)
     param_dict = {pn: p for pn, p in model.named_parameters()}

@@ -16,9 +16,9 @@ class ModifiedResNet(nn.Module):
 
     def __init__(self, config, input_resolution=224, width=64):
         super().__init__()
-        layers = config["MODEL"]["layers"]
-        output_dim = config["MODEL"]["classify"]
-        heads = config["MODEL"]["heads"]
+        layers = eval(config.MODEL["layers"])
+        output_dim = int(config.MODEL["classify"])
+        heads = int(config.MODEL["heads"])
         self.output_dim = output_dim
         self.input_resolution = input_resolution
         # the 3-layer stem
@@ -33,10 +33,10 @@ class ModifiedResNet(nn.Module):
 
         # residual layers
         self._inplanes = width  # this is a *mutable* variable used during construction
-        self.layer1 = self._make_layer(width, layers[0])
-        self.layer2 = self._make_layer(width * 2, layers[1], stride=2)
-        self.layer3 = self._make_layer(width * 4, layers[2], stride=2)
-        self.layer4 = self._make_layer(width * 8, layers[3], stride=2)
+        self.layer1 = self._make_layer(width, int(layers[0]))
+        self.layer2 = self._make_layer(width * 2, int(layers[1]), stride=2)
+        self.layer3 = self._make_layer(width * 4, int(layers[2]), stride=2)
+        self.layer4 = self._make_layer(width * 8, int(layers[3]), stride=2)
 
         embed_dim = width * 32  # the ResNet feature dimension
         self.attnpool = AttentionPool2d(input_resolution // 32, embed_dim, heads, output_dim)

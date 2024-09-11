@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 from typing import Union, List, Dict
 
@@ -16,7 +16,7 @@ from .CheckPointUtils import save_checkpoint
 def BasicSupervisedModelTrainer(
     config,
     model: nn.Module,
-    train_dataloader: torch.nn.utils.Dataset,
+    train_dataloader: torch.utils.data.Dataset,
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     summary_writer: Union[torch.utils.tensorboard.SummaryWriter] = None,
@@ -39,19 +39,19 @@ def BasicSupervisedModelTrainer(
     
     # TODO: Shuffle the training datasets at the start of the epoch, need to change the training logics
     for epoch in range(epochs):
-        if from_checkpoint & before_epoch_idx > epoch:
+        if from_checkpoint and before_epoch_idx > epoch:
             continue
         start_time = time.perf_counter()
-        for batch_num, (_x, _y) in tqdm(train_dataloader, desc=f"Epoch {epoch}", total=len(train_dataloader)):
-            if from_checkpoint & before_batch_idx > batch_num:
+        for batch_num, (_x, _y) in tqdm(enumerate(train_dataloader), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+            if from_checkpoint and before_batch_idx > batch_num:
                 continue
             if summary_writer is not None:
-                if not os.path.exists(config["TRAINING"]["log_dir"]):
+                if not os.path.exists(config.TRAINING["log_dir"]):
                     try:
-                        os.mkdir(config["TRAINING"]["log_dir"])
+                        os.mkdir(config.TRAINING["log_dir"])
                     except:
                         raise ValueError("Can't create log dir, you need to create the root path before create the log file")
-                _writer = SummaryWriter(config["TRAINING"]["log_dir"])
+                _writer = SummaryWriter(config.TRAINING["log_dir"])
             output_y = model(_x)
             loss = loss_fn(output_y, _y)
             optimizer.zero_grad()
@@ -64,6 +64,6 @@ def BasicSupervisedModelTrainer(
             end_time = time.perf_counter()
 
             # save training check point
-            if end_time - start_time > int(config["TRAINING"]["checkpoint_save_time"]):
+            if end_time - start_time > int(config.TRAINING["checkpoint_save_time"]):
                 save_checkpoint(config, model, optimizer, batch_num, epoch)
                 start_time = time.perf_counter()

@@ -15,8 +15,8 @@ def LLM_weight_initialize(model, config):
     if isinstance(model, nn.Linear):
         std = model.in_features ** -0.5
         if hasattr(model, 'WITH_RESIDUAL'):
-            std *= (2 * config["MODEL"]["layers"]) ** 0.5
-        torch.nn.init.normal_(model.weight, mean=float(config["TRAINING"]["init_mean"]), std=std)
+            std *= (2 * config.MODEL["layers"]) ** 0.5
+        torch.nn.init.normal_(model.weight, mean=float(config.TRAINING["init_mean"]), std=std)
         if model.bias is not None:
             torch.nn.init.zeros_(model.bias)
     elif isinstance(model, nn.Embedding):
@@ -25,9 +25,9 @@ def LLM_weight_initialize(model, config):
         # Initialize is different with different embeddings
 
         if hasattr(model, 'TOKEN_EMBEDDING'):
-            torch.nn.init.normal_(model.weight, mean=float(config["TRAINING"]["init_mean"]), std=0.02)
+            torch.nn.init.normal_(model.weight, mean=float(config.TRAINING["init_mean"]), std=0.02)
         elif hasattr(model, 'POSITION_EMBEDDING'):
-            torch.nn.init.normal_(model.weight, mean=float(config["TRAINING"]["init_mean"]), std=0.01)
+            torch.nn.init.normal_(model.weight, mean=float(config.TRAINING["init_mean"]), std=0.01)
 
 def CNN_initialize(model):
     # The Only thing we need to do is set the output barch normalization's gama to zero

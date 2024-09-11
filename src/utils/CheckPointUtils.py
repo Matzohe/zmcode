@@ -26,11 +26,11 @@ def save_checkpoint(
 ):
     
     checkpoint = CheckPoint(model.state_dict(), optimizer.state_dict(), batch_idx, epoch_idx)
-    checkpoint_save_name = os.path.join(config["TRAINING"]["checkpoint_dir"].format(type(model).__name__), 
-                                        config["TRAINING"]["checkpoint_save_name"].format(epoch_idx, batch_idx))
-    if not os.path.exists(config["TRAINING"]["checkpoint_dir"].format(type(model).__name__)):
+    checkpoint_save_name = os.path.join(config.TRAINING["checkpoint_dir"].format(type(model).__name__), 
+                                        config.TRAINING["checkpoint_save_name"].format(epoch_idx, batch_idx))
+    if not os.path.exists(config.TRAINING["checkpoint_dir"].format(type(model).__name__)):
         try:
-            os.mkdir(config["TRAINING"]["checkpoint_dir"].format(type(model).__name__))
+            os.mkdir(config.TRAINING["checkpoint_dir"].format(type(model).__name__))
         except:
             raise ValueError("Can't create checkpoint dir, you need to create the root path before create the checkpoint file")
     torch.save(checkpoint, checkpoint_save_name)
