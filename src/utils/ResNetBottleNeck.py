@@ -20,6 +20,8 @@ class Bottleneck(nn.Module):
 
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, 1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        # set a special attr to initialize the CNN model
+        self.bn3.WITH_RESIDUAL = 1
 
         self.relu = nn.ReLU(inplace=True)
         self.downsample = None
