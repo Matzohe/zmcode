@@ -24,6 +24,7 @@ def BasicSupervisedModelTrainer(
     checkpoint_path: str = None
 ):
     # This function has a limitation, the model's output should be the same as the label
+    # TODO: Change the data structure to fp16 while training.
     epochs = int(config.MODEL['epoch'])
     
     if from_checkpoint:
