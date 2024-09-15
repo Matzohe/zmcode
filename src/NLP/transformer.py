@@ -6,9 +6,9 @@ import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-from ...utils.ResidualAttentionBlock import ResidualAttentionBlock, DecoderResidualAttentionBlock
-from ...utils.MaskUtils import tril_mask_generator, pad_mask_generator
-from ...utils.PositionEmbeddingUtils import sinusoidal_position_embedding
+from ..utils.ResidualAttentionBlock import ResidualAttentionBlock, DecoderResidualAttentionBlock
+from ..utils.MaskUtils import tril_mask_generator, pad_mask_generator
+from ..utils.PositionEmbeddingUtils import sinusoidal_position_embedding
 
 class Transformer(nn.Module):
     def __init__(self, config):

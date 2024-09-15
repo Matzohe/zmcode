@@ -29,8 +29,35 @@ def LLM_weight_initialize(model, config):
         elif hasattr(model, 'POSITION_EMBEDDING'):
             torch.nn.init.normal_(model.weight, mean=float(config.TRAINING["init_mean"]), std=0.01)
 
+
 def CNN_initialize(model):
     # The Only thing we need to do is set the output barch normalization's gama to zero
     # As torch initialize the CNN model with the Kaiming initialization, we don't need to initialize it
     if isinstance(model, nn.BatchNorm2d) and hasattr(model, "WITH_RESIDUAL"):
         torch.nn.init.zeros_(model.weight)
+
+
+def convert_weight_from_fp32_to_fp16(model: nn.Module):
+    """Convert applicable model parameters to fp16"""
+
+    def _convert_weights_to_fp16(l):
+        if isinstance(l, (nn.Conv1d, nn.Conv2d, nn.Linear)):
+            l.weight.data = l.weight.data.half()
+            if l.bias is not None:
+                l.bias.data = l.bias.data.half()
+
+        if isinstance(l, nn.MultiheadAttention):
+            for attr in [*[f"{s}_proj_weight" for s in ["in", "q", "k", "v"]], "in_proj_bias", "bias_k", "bias_v"]:
+                tensor = getattr(l, attr)
+                if tensor is not None:
+                    tensor.data = tensor.data.half()
+
+        for name in ["text_projection", "proj"]:
+            if hasattr(l, name):
+                attr = getattr(l, name)
+                if attr is not None:
+                    attr.data = attr.data.half()
+
+    model.apply(_convert_weights_to_fp16)
+
+
