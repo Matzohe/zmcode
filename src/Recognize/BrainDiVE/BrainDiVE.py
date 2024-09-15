@@ -3,14 +3,14 @@ import torch.nn as nn
 import numpy as np
 from diffusers import LMSDiscreteScheduler, PNDMScheduler, DDIMScheduler, DPMSolverMultistepScheduler
 from BrainDiVE_utils.diffusion import DiffusionPipe
-from ...MultiModal.clip import from_pretrained
+from ...MultiModal.clip.from_pretrained import load
 
 class BrainDiVE(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.device = config.INFERENCE["device"]
         self.pipe = DiffusionPipe(config)
-        self.clip = from_pretrained.load(config.BRAINDIVE("clip_model"), self.device)
+        self.clip = load(config.BRAINDIVE("clip_model"), self.device)
         self.clip_guidance_scale = float(config.BRAINDIVE("clip_guidance_scale"))
         self.weight = None
         self.roi = None

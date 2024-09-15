@@ -5,7 +5,7 @@ from diffusers import StableDiffusionPipeline
 import math
 import torch.nn.functional as F
 
-from BrainDiVE_utils.CrossAttnStoreProcessor import CrossAttnStoreProcessor
+from .CrossAttnStoreProcessor import CrossAttnStoreProcessor
 
 class DiffusionPipe(nn.Module):
     # Special designed for BrainDiVE
