@@ -4,6 +4,8 @@ import diffusers
 from diffusers import StableDiffusionPipeline
 import math
 import torch.nn.functional as F
+from PIL import Image
+import numpy as np
 
 from .CrossAttnStoreProcessor import CrossAttnStoreProcessor
 
@@ -154,3 +156,10 @@ class DiffusionPipe(nn.Module):
                 " or `v_prediction`"
             )
         return pred_eps
+
+
+def ImageOutput(image):
+    image = (image / 2 + 0.5).clamp(0, 1)
+    image = image.cpu().permute(0, 2, 3, 1).numpy()[0]
+    image = Image.fromarray((image * 255).astype(np.uint8))
+    return image
