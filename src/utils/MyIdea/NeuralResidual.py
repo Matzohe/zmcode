@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class NewResnet34BottleNeck(nn.Module):
-    def __init__(self, inplanes, planes, gama=0.5, stride=1):
+    def __init__(self, inplanes, planes, image_size, gama=0.5, stride=1):
         super().__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, 3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -30,13 +30,14 @@ class NewResnet34BottleNeck(nn.Module):
             ])
         )
         self.gama = gama
+        self.image_size = image_size
         
     def forward(self, x, input_image):
         identity = x
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.relu(self.bn2(self.conv2(out)))
         identity = self.downsample(x)
-        out += self.gama * self.ImageProcess(input_image)
+        out += self.gama * self.ImageProcess(F.interporate(input_image, self.image_size))
         out += identity
         out = self.relu(out)
         return out
