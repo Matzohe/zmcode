@@ -50,9 +50,10 @@ class ResNet(nn.Module):
     def __init__(self, config):
         super(ResNet, self).__init__()
         self.pretraind_model_urls = {
-        'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-        'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-        'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',}
+            'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+            'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+            'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+        }
         self.layers = eval(config.MODEL["layers"])
         self.num_class = int(config.MODEL["classify"])
         self.in_channels = 64
@@ -104,20 +105,23 @@ class ResNet(nn.Module):
         out = self.fc(out)
 
         return out
-
-    # Construct ResNet-n
-    def ResNet50(num_classess):
-        return ResNet([3, 4, 6, 3], num_classess)
-
-    def ResNet101(num_classess):
-        return ResNet([3, 4, 23, 3], num_classess)
-
-    def ResNet152(num_classess):
-        return ResNet([3, 8, 36, 3], num_classess)
-
+    
     def from_pretrained(self, model_name):
         if model_name in self.pretraind_model_urls:
             state_dict = torchvision.models.utils.load_state_dict_from_url(self.pretraind_model_urls[model_name], progress=True)
+            self.load_state_dict(state_dict)
         else:
             raise ValueError('model_name should be in {}'.format(self.pretraind_model_urls.keys()))
+
+    # Construct ResNet-n
+def ResNet50(num_classess):
+    return ResNet([3, 4, 6, 3], num_classess)
+
+def ResNet101(num_classess):
+    return ResNet([3, 4, 23, 3], num_classess)
+
+def ResNet152(num_classess):
+    return ResNet([3, 8, 36, 3], num_classess)
+
+    
         
