@@ -1,4 +1,4 @@
-from clip import CLIP
+from .clip import CLIP
 from ...utils.ModelInitializeUtils import convert_weight_from_fp32_to_fp16
 
 def build_model(state_dict: dict):

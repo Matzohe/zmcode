@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from diffusers import LMSDiscreteScheduler, PNDMScheduler, DDIMScheduler, DPMSolverMultistepScheduler
-from BrainDiVE_utils.diffusion import DiffusionPipe
+from tqdm import tqdm
+from .BrainDiVE_utils.diffusion import DiffusionPipe
 from ...MultiModal.clip.from_pretrained import load
 
 class BrainDiVE(nn.Module):
@@ -10,7 +11,7 @@ class BrainDiVE(nn.Module):
         super().__init__()
         self.device = config.INFERENCE["device"]
         self.pipe = DiffusionPipe(config)
-        self.clip = load(config.BRAINDIVE("clip_model"), self.device)
+        self.clip, _ = load(config.BRAINDIVE("clip_model"), self.device)
         self.clip_guidance_scale = float(config.BRAINDIVE("clip_guidance_scale"))
         self.weight = None
         self.roi = None
@@ -19,7 +20,7 @@ class BrainDiVE(nn.Module):
         self.weight = torch.from_numpy(np.load(path)).to(self.device).to(dtype=torch.float32)
         
     def load_roi(self, path):
-        self.roi = torch.from_numpy(np.loadtxt(path))
+        self.roi = torch.from_numpy(np.loadtxt(path)).to(device=self.device)
         self.weight = self.weight.T
         index = np.zeros(len(self.weight),dtype=bool)
         for i in range(len(index)):
@@ -31,22 +32,22 @@ class BrainDiVE(nn.Module):
     def brainProcess(self, latent, timestep, current_step, text_embeddings, noise_orignal, clip_guidance_scale):
         latent_input = latent.detach().requires_grad_()
         latent_model_input = self.pipe.scheduler.scale_model_input(latent_input, timestep)
-        noise_pred = self.unet(latent_model_input, timestep, encoder_hidden_states=text_embeddings).sample
+        noise_pred = self.pipe.unet(latent_model_input, timestep, encoder_hidden_states=text_embeddings).sample
 
-        if isinstance(self.scheduler, (PNDMScheduler, DDIMScheduler, DPMSolverMultistepScheduler)):
-            alpha_prod_t = self.scheduler.alphas_cumprod[timestep]
+        if isinstance(self.pipe.scheduler, (PNDMScheduler, DDIMScheduler, DPMSolverMultistepScheduler)):
+            alpha_prod_t = self.pipe.scheduler.alphas_cumprod[timestep]
             beta_prod_t = 1 - alpha_prod_t
             pred_original_sample = (latents - beta_prod_t ** (0.5) * noise_pred) / alpha_prod_t ** (0.5)
             fac = torch.sqrt(beta_prod_t)
             sample = pred_original_sample * (fac) + latents * (1 - fac)
-        elif isinstance(self.scheduler, LMSDiscreteScheduler):
-            sigma = self.scheduler.sigmas[current_step]
+        elif isinstance(self.pipe.scheduler, LMSDiscreteScheduler):
+            sigma = self.pipe.scheduler.sigmas[current_step]
             sample = latents - sigma * noise_pred
         else:
-            raise ValueError(f"scheduler type {type(self.scheduler)} not supported")
+            raise ValueError(f"scheduler type {type(self.pipe.scheduler)} not supported")
 
-        sample = 1 / self.vae.config.scaling_factor * sample
-        image = self.vae.decode(sample).sample
+        sample = 1 / self.pipe.vae.config.scaling_factor * sample
+        image = self.pipe.vae.decode(sample).sample
         image = (image / 2 + 0.5).clamp(0, 1)
 
         if not hasattr(self, "OPENAI_CLIP_MEAN"):
@@ -75,15 +76,16 @@ class BrainDiVE(nn.Module):
         torch.cleanup()
 
         latents = latents.detach()
-        if isinstance(self.scheduler, LMSDiscreteScheduler):
+        if isinstance(self.pipe.scheduler, LMSDiscreteScheduler):
             latents = latents.detach() + grads * (sigma ** 2)
             noise_pred = noise_orignal
         else:
-            noise_pred = noise_orignal - torch.sqrt(beta_prod_t) * grads
+            noise_pred = noise_orignal - torch.sqrt(beta_prod_t) * grads.data
         return noise_pred, latents
     
     def process(self, latent, timestep, current_step, text_embeddings):
-        noise_pred = self.pipe.NoiseProcess(latent, text_embeddings, timestep)
+        with torch.no_grad():
+            noise_pred = self.pipe.NoiseProcess(latent, text_embeddings, timestep)
         noise_pred, latent = self.brainProcess(latent, timestep, current_step, text_embeddings, noise_pred, self.clip_guidance_scale)
         latent = self.pipe.scheduler.step(noise_pred, timestep, latent).prev_sample
         return latent
@@ -91,7 +93,7 @@ class BrainDiVE(nn.Module):
     def forward(self):
         latent = self.pipe.NoiseInitialize()
         text_embeddings = self.pipe.TextEmbedding("")
-        for current_step, timestep in enumerate(self.pipe.scheduler.timesteps):
+        for current_step, timestep in tqdm(enumerate(self.pipe.scheduler.timesteps)):
             latent = self.process(latent, timestep, current_step, text_embeddings)
         return latent
 

@@ -11,6 +11,8 @@ class DiffusionPipe(nn.Module):
     # Special designed for BrainDiVE
     def __init__(self, config):
         super().__init__()
+        self.device = config.INFERENCE["device"]
+        self.sag_scale = float(self.BRAINDIVE["sag_scale"])
         self.time_step = int(config.DIFFUSION["time_step"])
         self.model = StableDiffusionPipeline.from_pretrained(
             config.DIFFUSION["model_name"]).to(config.INFERENCE["device"])
@@ -21,19 +23,24 @@ class DiffusionPipe(nn.Module):
 
         # different model parts for building diffusion models
         self.vae = self.model.vae
+        self.vae.to(device=self.device)
         self.unet = self.model.unet
+        self.unet = self.unet.to(device=self.device)
         self.text_encoder = self.model.text_encoder
+        self.text_encoder = self.text_encoder.to(device=self.device)
+
         self.tokenizer = self.model.tokenizer
         self.image_size = int(config.DIFFUSION["image_size"])
 
-        self.device = config.INFERENCE["device"]
-        self.sag_scale = float(config.BRAINDIVE["sag_scale"])
+        self.store_processor = CrossAttnStoreProcessor()
+        self.unet.mid_block.attentions[0].transformer_blocks[0].attn1.precessor = self.store_processor
 
     def TextEmbedding(self, prompt):
-        return self.text_encoder(self.tokenizer(prompt, return_tensors="pt").input_ids)[0]
+        tokenizedinfo = self.tokenizer(prompt, return_tensors="pt").input_ids
+        tokenizedinfo = tokenizedinfo.to(device=self.device)
+        return self.text_encoder(tokenizedinfo)[0]
     
     def NoiseProcess(self, latents, text_embeddings, timesteps):
-        store_processor = CrossAttnStoreProcessor()
         latent_model_input = self.scheduler.scale_model_input(latents, timesteps)
         noise_pred = self.unet(
                         latent_model_input,
@@ -41,7 +48,7 @@ class DiffusionPipe(nn.Module):
                         encoder_hidden_states=text_embeddings,
                     ).sample
         pred_x0 = self.pred_x0(latents, noise_pred, timesteps)
-        cond_attn = store_processor.attention_probs
+        cond_attn = self.store_processor.attention_probs
         degraded_latents = self.sag_masking(
             pred_x0, cond_attn, timesteps, self.pred_epsilon(latents, noise_pred, timesteps)
         )
@@ -61,6 +68,7 @@ class DiffusionPipe(nn.Module):
     
     def ImageDecoding(self, latents):
         with torch.no_grad():
+            latents = 1 / self.vae.config.scaling_factor * latents
             return self.vae.decode(latents).sample
     
     def sag_masking(self, original_latents, attn_map, t, eps):
@@ -130,3 +138,19 @@ class DiffusionPipe(nn.Module):
             )
 
         return pred_original_sample
+    
+    def pred_epsilon(self, sample, model_output, timestep):
+        alpha_prod_t = self.scheduler.alphas_cumprod[timestep]
+        beta_prod_t = 1 - alpha_prod_t
+        if self.scheduler.config.prediction_type == "epsilon":
+            pred_eps = model_output
+        elif self.scheduler.config.prediction_type == "sample":
+            pred_eps = (sample - (alpha_prod_t ** 0.5) * model_output) / (beta_prod_t ** 0.5)
+        elif self.scheduler.config.prediction_type == "v_prediction":
+            pred_eps = (beta_prod_t ** 0.5) * sample + (alpha_prod_t ** 0.5) * model_output
+        else:
+            raise ValueError(
+                f"prediction_type given as {self.scheduler.config.prediction_type} must be one of `epsilon`, `sample`,"
+                " or `v_prediction`"
+            )
+        return pred_eps

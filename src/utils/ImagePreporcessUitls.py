@@ -14,7 +14,8 @@ def ClipPreProcess(image_path: str) -> torch.Tensor:
     # The hyperparameters in the Normalize is the average and standard deviation of ImageNet
 
     image = Image.open(image_path)
-
+    if image.mode == "L":
+        image = image.convert("RGB")
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),

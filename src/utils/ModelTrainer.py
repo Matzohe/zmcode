@@ -44,6 +44,8 @@ def BasicSupervisedModelTrainer(
             continue
         start_time = time.perf_counter()
         for batch_num, (_x, _y) in tqdm(enumerate(train_dataloader), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+            _x = _x.to(config.TRAINING['device'])
+            _y = _y.to(config.TRAINING['device'])
             if from_checkpoint and before_batch_idx > batch_num:
                 continue
             if summary_writer is not None:
@@ -52,7 +54,6 @@ def BasicSupervisedModelTrainer(
                         os.mkdir(config.TRAINING["log_dir"])
                     except:
                         raise ValueError("Can't create log dir, you need to create the root path before create the log file")
-                _writer = SummaryWriter(config.TRAINING["log_dir"])
             output_y = model(_x)
             loss = loss_fn(output_y, _y)
             optimizer.zero_grad()
@@ -61,7 +62,7 @@ def BasicSupervisedModelTrainer(
 
             # write training loss to tensorboard
             if summary_writer is not None:
-                _writer.add_scalar("loss", loss, epoch)
+                summary_writer.add_scalar("loss", loss, epoch)
             end_time = time.perf_counter()
 
             # save training check point

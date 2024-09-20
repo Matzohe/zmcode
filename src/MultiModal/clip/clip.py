@@ -1,9 +1,9 @@
-from types import Union, Tuple
+from typing import Union, Tuple
 import torch
 import torch.nn as nn
 import numpy as np
 
-from ...CV.ResNet50 import ModifiedResNet
+from ...CV.ClipResNet50 import ModifiedResNet
 from ...CV.ViT import VisionTransformer, Transformer
 from ...utils.utils import LayerNorm
 
