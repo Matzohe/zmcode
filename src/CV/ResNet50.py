@@ -64,12 +64,12 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         # The following layers define stage 2-5(residual blocks)
-        self.layer1 = self._make_layer(64, layers[0])
-        self.layer2 = self._make_layer(128, layers[1], stride=2)
-        self.layer3 = self._make_layer(256, layers[2], stride=2)
-        self.layer4 = self._make_layer(512, layers[3], stride=2)
+        self.layer1 = self._make_layer(64, self.layers[0])
+        self.layer2 = self._make_layer(128, self.layers[1], stride=2)
+        self.layer3 = self._make_layer(256, self.layers[2], stride=2)
+        self.layer4 = self._make_layer(512, self.layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * self.bottleneck.expansion, num_classess)
+        self.fc = nn.Linear(512 * self.bottleneck.expansion, self.num_classess)
 
     # Build residual block
     def _make_layer(self, channels, num_bottleneck, stride=1):
