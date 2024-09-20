@@ -3,9 +3,8 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-from torch.utils.tensorboard import SummaryWriter
 from typing import Union, List, Dict
-
+from torch.utils.tensorboard import SummaryWriter
 import os
 from tqdm import tqdm
 import time
@@ -19,7 +18,7 @@ def BasicSupervisedModelTrainer(
     train_dataloader: torch.utils.data.Dataset,
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
-    summary_writer: Union[torch.utils.tensorboard.SummaryWriter] = None,
+    summary_writer: Union[SummaryWriter] = None,
     from_checkpoint: bool = False,
     checkpoint_path: str = None
 ):
@@ -62,7 +61,7 @@ def BasicSupervisedModelTrainer(
 
             # write training loss to tensorboard
             if summary_writer is not None:
-                summary_writer.add_scalar("loss", loss, epoch)
+                summary_writer.add_scalar("Loss", loss, epoch)
             end_time = time.perf_counter()
 
             # save training check point
