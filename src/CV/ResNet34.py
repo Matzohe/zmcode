@@ -13,17 +13,17 @@ class ResNet34(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.inplanes = int(config.RESNET34['inplanes'])
         self.planes = eval(config.RESNET34['planes'])
-        self.layer1 = self._make_layer(self.planes[0], self.layer[0])
-        self.layer2 = self._make_layer(self.planes[1], self.layer[1])
-        self.layer3 = self._make_layer(self.planes[2], self.layer[2])
-        self.layer4 = self._make_layer(self.planes[3], self.layer[3])
+        self.layer1 = self._make_layer(self.planes[0], self.layer[0], stride=1)
+        self.layer2 = self._make_layer(self.planes[1], self.layer[1], stride=2)
+        self.layer3 = self._make_layer(self.planes[2], self.layer[2], stride=2)
+        self.layer4 = self._make_layer(self.planes[3], self.layer[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc = nn.Linear(512, 1000)
 
-    def _make_layer(self, planes, num_bottleneck):
+    def _make_layer(self, planes, num_bottleneck, stride=1):
         layers = []
-        layers.append(Resnet34Bottleneck(self.inplanes, planes))
+        layers.append(Resnet34Bottleneck(self.inplanes, planes, stride=stride))
         for _ in range(1, num_bottleneck):
             layers.append(Resnet34Bottleneck(planes, planes))
         self.inplanes = planes
