@@ -15,9 +15,10 @@ from .CheckPointUtils import save_checkpoint
 def BasicSupervisedModelTrainer(
     config,
     model: nn.Module,
-    train_dataloader: torch.utils.data.Dataset,
+    train_dataloader,
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
+    val_dataloader = None,
     summary_writer: Union[SummaryWriter] = None,
     from_checkpoint: bool = False,
     checkpoint_path: str = None
@@ -56,10 +57,32 @@ def BasicSupervisedModelTrainer(
 
             # write training loss to tensorboard
             if summary_writer is not None:
-                summary_writer.add_scalar("Loss", loss, epoch)
+                summary_writer.add_scalar("Loss", loss, epoch * len(train_dataloader) + batch_num)
             end_time = time.perf_counter()
 
             # save training check point
             if end_time - start_time > int(config.TRAINING["checkpoint_save_time"]):
                 save_checkpoint(config, model, optimizer, batch_num, epoch)
                 start_time = time.perf_counter()
+        if val_dataloader is not None:
+            all_acc = 0
+            all_num = 0
+            with torch.no_grad():
+                for val_batch_num, (_x, _y) in tqdm(enumerate(val_dataloader), desc=f"Epoch {epoch}", total=len(val_dataloader)):
+                    _x = _x.to(config.TRAINING['device'])
+                    _y = _y.to(config.TRAINING['device'])
+                    output_y = model(_x)
+                    all_acc += (output_y.argmax(1) == _y).sum()
+                    all_num += len(_y)
+            if summary_writer is not None:
+                summary_writer.add_scalar("Accuracy", all_acc / all_num, epoch)
+            else:
+                print("Epoch:{}, Accuracy: {}".format(epoch, all_acc / all_num))
+
+    # save trained model
+    model_state_dict = model.state_dict()
+    save_root = config.TRAINING["model_save_root"].format(type(model).__name__)
+    if not os.path.exists("/".join(save_root.split['/'][:-1])):
+        os.makedirs("/".join(save_root.split['/'][:-1]))
+    torch.save(model_state_dict, save_root)
+    print("Model saved at {}".format(save_root))
