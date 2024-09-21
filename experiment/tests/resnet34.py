@@ -15,7 +15,7 @@ def Resnet34Test():
     model = ResNet34(config)
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     loss_fn = nn.CrossEntropyLoss()
-    training_dataset, _ = data_loader(config)
+    training_dataset, val_dataset = data_loader(config)
     summary_writer = SummaryWriter()
-    BasicSupervisedModelTrainer(config, model, training_dataset, optimizer, loss_fn, summary_writer=summary_writer)
+    BasicSupervisedModelTrainer(config, model, training_dataset, optimizer, loss_fn, summary_writer=summary_writer, val_dataloader=val_dataset)
     
