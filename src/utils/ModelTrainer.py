@@ -47,12 +47,7 @@ def BasicSupervisedModelTrainer(
             _y = _y.to(config.TRAINING['device'])
             if from_checkpoint and before_batch_idx > batch_num:
                 continue
-            if summary_writer is not None:
-                if not os.path.exists(config.TRAINING["log_dir"]):
-                    try:
-                        os.mkdir(config.TRAINING["log_dir"])
-                    except:
-                        raise ValueError("Can't create log dir, you need to create the root path before create the log file")
+            
             output_y = model(_x)
             loss = loss_fn(output_y, _y)
             optimizer.zero_grad()

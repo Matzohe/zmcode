@@ -61,16 +61,16 @@ class Resnet34Bottleneck(nn.Module):
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(planes, planes, 3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes * self.expansion)
+        self.bn2 = nn.BatchNorm2d(planes)
         self.stride = stride
         self.expansion = 4
         self.downsample = None
         
-        if stride > 1 or inplanes != planes * self.expansion:
+        if stride > 1 or inplanes != planes:
             self.downsample = nn.Sequential(OrderedDict([
                 ("-1", nn.AvgPool2d(stride)),
                 ("0", nn.Conv2d(inplanes, planes, 1, stride=1, bias=False)),
-                ("1", nn.BatchNorm2d(planes * 4))
+                ("1", nn.BatchNorm2d(planes))
             ]))
         else:
             self.downsample = nn.Identity()
@@ -81,6 +81,6 @@ class Resnet34Bottleneck(nn.Module):
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.relu(self.bn2(self.conv2(out)))
         identity = self.downsample(x)
-        out += identity
+        out = out + identity
         out = self.relu(out)
         return out

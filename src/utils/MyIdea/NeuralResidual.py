@@ -4,7 +4,7 @@ from collections import OrderedDict
 import torch.nn.functional as F
 
 
-class NewResnet34BottleNeck(nn.Module):
+class NeuralResnet34BottleNeck(nn.Module):
     def __init__(self, inplanes, planes, image_size, gama=0.5, stride=1):
         super().__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, 3, stride=stride, padding=1, bias=False)

@@ -6,6 +6,7 @@ from ..utils.ResNetBottleNeck import Resnet34Bottleneck
 
 class ResNet34(nn.Module):
     def __init__(self, config):
+        super().__init__()
         self.layer = eval(config.RESNET34['layers'])
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -37,8 +38,7 @@ class ResNet34(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = self.avgpool(x).view(x.size(0), -1)
         x = self.fc(x)
 
         return x

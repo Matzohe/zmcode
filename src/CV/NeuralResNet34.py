@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from ..utils.MyIdea.NeuralResidual import NewResnet34BottleNeck
+from ..utils.MyIdea.NeuralResidual import NeuralResnet34BottleNeck
 
 
 class NeuralResNet34(nn.Module):
@@ -25,9 +25,9 @@ class NeuralResNet34(nn.Module):
 
     def _make_layer(self, planes, num_bottleneck, image_size, stride=1):
         layers = []
-        layers.append(NewResnet34BottleNeck(self.inplanes, planes, image_size, gama=self.gama, stride=stride))
+        layers.append(NeuralResnet34BottleNeck(self.inplanes, planes, image_size, gama=self.gama, stride=stride))
         for _ in range(1, num_bottleneck):
-            layers.append(NewResnet34BottleNeck(planes, planes, image_size, gama=self.gama))
+            layers.append(NeuralResnet34BottleNeck(planes, planes, image_size, gama=self.gama))
         self.inplanes = planes
         return nn.Sequential(*layers)
     
@@ -40,8 +40,7 @@ class NeuralResNet34(nn.Module):
         x = self.layer3(x, pre_image)
         x = self.layer4(x, pre_image)
 
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = self.avgpool(x).view(x.shape[0], -1)
         x = self.fc(x)
 
         return x
