@@ -14,7 +14,7 @@ class DiffusionPipe(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.device = config.INFERENCE["device"]
-        self.sag_scale = float(self.BRAINDIVE["sag_scale"])
+        self.sag_scale = float(config.BRAINDIVE["sag_scale"])
         self.time_step = int(config.DIFFUSION["time_step"])
         self.model = StableDiffusionPipeline.from_pretrained(
             config.DIFFUSION["model_name"]).to(config.INFERENCE["device"])
@@ -35,7 +35,7 @@ class DiffusionPipe(nn.Module):
         self.image_size = int(config.DIFFUSION["image_size"])
 
         self.store_processor = CrossAttnStoreProcessor()
-        self.unet.mid_block.attentions[0].transformer_blocks[0].attn1.precessor = self.store_processor
+        self.unet.mid_block.attentions[0].transformer_blocks[0].attn1.processor = self.store_processor
 
     def TextEmbedding(self, prompt):
         tokenizedinfo = self.tokenizer(prompt, return_tensors="pt").input_ids
