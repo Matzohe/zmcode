@@ -6,6 +6,7 @@ from ..utils.MyIdea.NeuralResidual import NeuralResnet34BottleNeck
 
 class NeuralResNet34(nn.Module):
     def __init__(self, config):
+        super().__init__()
         self.layer = eval(config.RESNET34['layers'])
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -32,15 +33,14 @@ class NeuralResNet34(nn.Module):
         return nn.Sequential(*layers)
     
     def forward(self, x):
-        pre_image = x
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.maxpool(x)
-        x = self.layer1(x, pre_image)
-        x = self.layer2(x, pre_image)
-        x = self.layer3(x, pre_image)
-        x = self.layer4(x, pre_image)
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.maxpool(out)
+        out = self.layer1((out, x))
+        out = self.layer2((out[0], x))
+        out = self.layer3((out[0], x))
+        out = self.layer4((out[0], x))
 
-        x = self.avgpool(x).view(x.shape[0], -1)
-        x = self.fc(x)
+        out = self.avgpool(out[0]).view(out[0].shape[0], -1)
+        out = self.fc(out)
 
-        return x
+        return out

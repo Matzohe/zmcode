@@ -41,7 +41,7 @@ class Bottleneck(nn.Module):
         out = self.relu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
         identity = self.downsample(x)
-        out += identity # pixel-wise addtition
+        out = out + identity # pixel-wise addtition
         out = self.relu(out)
         return out
 

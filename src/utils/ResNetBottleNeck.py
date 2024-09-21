@@ -77,7 +77,6 @@ class Resnet34Bottleneck(nn.Module):
         
 
     def forward(self, x):
-        identity = x
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.relu(self.bn2(self.conv2(out)))
         identity = self.downsample(x)

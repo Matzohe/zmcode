@@ -24,20 +24,20 @@ class NeuralResnet34BottleNeck(nn.Module):
 
         self.ImageProcess = nn.Sequential(
             OrderedDict([
-                ('resize', nn.AvgPool2d(stride) if stride > 1 else nn.Identity()),
-                ('conv', nn.Conv2d(3, planes, 3, stride=1, padding=1, bias=False)),
+                ('conv', nn.Conv2d(3, planes, 1, stride=1, bias=False)),
                 ('bn', nn.BatchNorm2d(planes)),
             ])
         )
         self.gama = gama
         self.image_size = image_size
         
-    def forward(self, x, input_image):
-        identity = x
+    def forward(self, input_info):
+        x = input_info[0]
+        input_image = input_info[1]
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.relu(self.bn2(self.conv2(out)))
         identity = self.downsample(x)
-        out += self.gama * self.ImageProcess(F.interporate(input_image, self.image_size))
-        out += identity
+        out = out + self.gama * self.ImageProcess(F.interpolate(input_image, self.image_size))
+        out = out + identity
         out = self.relu(out)
-        return out
+        return (out, input_image)

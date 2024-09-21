@@ -82,7 +82,7 @@ def BasicSupervisedModelTrainer(
     # save trained model
     model_state_dict = model.state_dict()
     save_root = config.TRAINING["model_save_root"].format(type(model).__name__)
-    if not os.path.exists("/".join(save_root.split['/'][:-1])):
-        os.makedirs("/".join(save_root.split['/'][:-1]))
+    if not os.path.exists("/".join(save_root.split('/')[:-1])):
+        os.makedirs("/".join(save_root.split('/')[:-1]))
     torch.save(model_state_dict, save_root)
     print("Model saved at {}".format(save_root))
