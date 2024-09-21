@@ -12,7 +12,7 @@ from src.utils.OptimizerUtils import configure_optimizers
 def Resnet34Test():
     set_seed(42)
     config = INIconfig("config.cfg")
-    model = ResNet34(config)
+    model = ResNet34(config).to(device=config.TRAINING['device'])
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     loss_fn = nn.CrossEntropyLoss()
     training_dataset, val_dataset = data_loader(config)
