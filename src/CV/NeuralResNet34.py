@@ -14,7 +14,7 @@ class NeuralResNet34(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  # 224 / 4 = 56
         self.inplanes = int(config.RESNET34['inplanes'])
         self.planes = eval(config.RESNET34['planes'])
-        self.gama = float(config.MYRES['gama'])
+        self.gama = nn.Parameter(torch.zeros(size=(1,), requires_grad=True, dtype=torch.float32))
         self.image_size = eval(config.MYRES['image_size'])
         self.layer1 = self._make_layer(self.planes[0], self.layer[0], self.image_size[0], stride=1)  # 56
         self.layer2 = self._make_layer(self.planes[1], self.layer[1], self.image_size[1], stride=2)  # 56 / 2 = 28

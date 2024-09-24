@@ -14,6 +14,7 @@ def cfa_Test():
     _, val_dataloader = data_loader(config)
     cfa = cfaAnalysis(model_A, model_B, model_A_layers=["conv1", "layer1", "layer2", "layer3", "layer4"], model_B_layers=["conv1", "layer1", "layer2", "layer3", "layer4"], kernel="linear")
     output = cfa.forward(val_dataloader)
+    torch.save(output, "middle_info.pt")
     output = torch.cat(output, dim=0).permute(1, 2, 0).numpy()
     im = Image.fromarray(output)
     im.show()
