@@ -1,11 +1,16 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-
+import torch
 
 
 def CKA_Image_Saver(cka_result, config):
-    cka_matrix = np.flipud(cka_result['CKA'].numpy())
+    cka_matrix = cka_result['CKA']
+    new_matrix = []
+    cka_length = cka_matrix.shape[0]
+    for i in range(cka_length):
+        new_matrix.append(cka_matrix[cka_length - i - 1])
+    new_matrix = torch.cat(cka_matrix).view(cka_length.shape[0], -1).numpy()
     model1_name = cka_result['model1_name']
     model2_name = cka_result['model2_name']
     save_root = config.CKA['image_save_root']

@@ -12,13 +12,13 @@ from src.utils.utils import INIconfig
 def cka_test():
     # load test models
     config = INIconfig('config.cfg')
-    model1 = models.resnet18(pretrained=True)
-    model2 = models.resnet34(pretrained=True)
+    model1 = models.resnet50(pretrained=True)
+    model2 = models.resnet50(pretrained=True)
 
     # prepare for the dataloader
     transform = transforms.Compose([transforms.ToTensor()])
     dataset = CIFAR10(root='testDataset/cifar', train=False, download=True, transform=transform)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
     
-    output = CKA_Function(model1, model2, dataloader, "ResNet18", "ResNet34")
+    output = CKA_Function(model1, model2, dataloader, "ResNet50", "ResNet50")
     CKA_Image_Saver(output, config)
