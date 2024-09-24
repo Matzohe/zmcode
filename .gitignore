@@ -6,6 +6,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 runs/
-experiment/output
+experiment/output/
 experiment/ModelParams
 new_test.py

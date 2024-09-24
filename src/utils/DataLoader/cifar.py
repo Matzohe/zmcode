@@ -6,7 +6,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 
 
-def data_loader(config,
+def CifarDataLoaderGenerate(config,
                 shuffle=True,
                 test=False):
     data_dir = config.DATASET["cifar"]

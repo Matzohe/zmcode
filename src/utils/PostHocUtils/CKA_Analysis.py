@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
-from typing import Union
-from torch.utils.data import DataLoader
 import torchextractor as tx
-from collections import OrderedDict
 from tqdm import tqdm
 import os
-from ..CKA import CFA
+from ..CKA import CKA
 
 
 class cfaAnalysis(nn.Module):
@@ -43,7 +40,7 @@ class cfaAnalysis(nn.Module):
         return data1, data2
     
     def cfaCulculation(self, matrix_A: torch.tensor, matrix_B: torch.tensor):
-        output_info = CFA(matrix_A, matrix_B, kernel=self.kernel)
+        output_info = CKA(matrix_A, matrix_B, kernel=self.kernel)
         return output_info.detach().cpu()
     
     def forward(self, dataloader):
@@ -70,21 +67,3 @@ class cfaAnalysis(nn.Module):
             del features_A
             del features_B
             del data
-
-        # for key, value in dict_A.items():
-        #     middle_data = torch.cat(value, dim=0)
-        #     dict_A[key] = middle_data.view(middle_data.shape[0], -1)
-        
-        # for key, value in dict_B.items():
-        #     middle_data = torch.cat(value, dim=0)
-        #     dict_B[key] = middle_data.view(middle_data.shape[0], -1)
-
-        # output_cfa = []
-
-        # for _, value_A in tqdm(dict_A.items(), desc="CFA calculating"):
-        #     middle_similar = []
-        #     for _, value_B in dict_B.items():
-        #         middle_similar.append(self.cfaCulculation(value_A, value_B))
-        #     output_cfa.append(middle_similar)
-
-        # return output_cfa

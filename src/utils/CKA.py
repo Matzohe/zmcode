@@ -1,14 +1,13 @@
 import torch
-import torch.nn as nn
-import torchvision
-from typing import Union, Tuple, List
+from typing import Union
+from torch_cka import CKA as _CKA
 
 
 # ==================================================
 # CFA Function use for PostHoc explainable
 # ==================================================
 
-def CFA(
+def CKA(
         matrix_A: torch.tensor,
         matrix_B: torch.tensor,
         kernel: str,
@@ -37,3 +36,17 @@ def HSIC(
     x = torch.matmul(x, H)
 
     return torch.trace(x) * w
+
+
+def CKA_Function(model_A, model_B, _data_loader, model_A_name: Union[str] = None, model_B_name: Union[str] = None, device='cpu'):
+    if model_A_name is None:
+        model_A_name = type(model_A).__name__ + "A"
+    if model_B_name is None:
+        model_B_name = type(model_B).__name__ + "B"
+
+    cka = _CKA(model_A, model_B, model1_name=model_A_name, model2_name=model_B_name, device=device)
+
+    cka.compare(_data_loader)
+    result = cka.export()
+
+    return result
