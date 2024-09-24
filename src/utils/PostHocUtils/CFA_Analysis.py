@@ -24,7 +24,8 @@ class cfaAnalysis(nn.Module):
         return features_A, features_B
     
     def cfaCulculation(self, matrix_A: torch.tensor, matrix_B: torch.tensor):
-        return CFA(matrix_A, matrix_B, kernel=self.kernel)
+        output_info = CFA(matrix_A, matrix_B, kernel=self.kernel)
+        return output_info.detach().cpu()
     
     def forward(self, dataloader):
 
