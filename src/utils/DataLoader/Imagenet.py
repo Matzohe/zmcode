@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from collections import OrderedDict
 import os
+import random
 
 from ..ImagePreporcessUitls import ImageNetPreProcess
 
@@ -20,12 +21,80 @@ def get_classification(config):
     return labels
 
 
-class ImageNetDataset(Dataset):
+def get_train_list(config):
+    # caffe file is downloaded from url: http://dl.caffe.berkeleyvision.org/caffe_ilsvrc12.tar.gz
+    caffe_root = config.DATASET["imagenet_caffe"]
+    root_list = []
+    with open(os.path.join(caffe_root, "train.txt"), "r") as f:
+        for line in f:
+            root_list.append(line.strip())
+
+    return root_list
+
+
+def get_val_list(config):
+    # caffe file is downloaded from url: http://dl.caffe.berkeleyvision.org/caffe_ilsvrc12.tar.gz
+    caffe_root = config.DATASET["imagenet_caffe"]
+    val_list = []
+    with open(os.path.join(caffe_root, "val.txt"), "r") as f:
+        for line in f:
+            val_list.append(line.strip())
+
+    return val_list
+
+class ImageNetTrainDataset(Dataset):
     def __init__(self, config):
-        pass
+        super().__init__()
 
-    def __getitem__():
-        pass
+        self.config = config
+        self.imagenet_root = config.DATASET["imagenet_root"]
+        
+        self.root_list = [os.path.join(self.imagenet_root, root) for root in get_train_list(config)]
+        random.shuffle(self.root_list)
 
-    def __len__():
-        pass
+    def __getitem__(self, index):
+        return ImageNetPreProcess(self.root_list[index])
+
+    def __len__(self):
+        return len(self.root_list)
+
+
+class ImageNetValDataset(Dataset):
+    def __init__(self, config):
+        super().__init__()
+
+        self.config = config
+        self.imagenet_root = config.DATASET["imagenet_root"]
+        
+        self.root_list = [os.path.join(self.imagenet_root, root) for root in get_val_list(config)]
+        random.shuffle(self.root_list)
+
+    def __getitem__(self, index):
+        return ImageNetPreProcess(self.root_list[index])
+
+    def __len__(self):
+        return len(self.root_list)
+
+
+def get_imagenet_training_dataloader(config):
+    dataset = ImageNetTrainDataset(config)
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=int(config.DATALOADER["batch_size"]),
+        shuffle=eval(config.DATALOADER["shuffle"]),
+        num_workers=int(config.DATALOADER["num_workers"]),
+        pin_memory=eval(config.DATALOADER["pin_memory"]),
+    )
+    return dataloader
+
+
+def get_imagenet_validation_dataloader(config):
+    dataset = ImageNetValDataset(config)
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=int(config.DATALOADER["batch_size"]),
+        shuffle=eval(config.DATALOADER["shuffle"]),
+        num_workers=int(config.DATALOADER["num_workers"]),
+        pin_memory=eval(config.DATALOADER["pin_memory"]),
+    )
+    return dataloader

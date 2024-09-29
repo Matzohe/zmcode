@@ -112,16 +112,3 @@ class ResNet(nn.Module):
             self.load_state_dict(state_dict)
         else:
             raise ValueError('model_name should be in {}'.format(self.pretraind_model_urls.keys()))
-
-    # Construct ResNet-n
-def ResNet50(num_classess):
-    return ResNet([3, 4, 6, 3], num_classess)
-
-def ResNet101(num_classess):
-    return ResNet([3, 4, 23, 3], num_classess)
-
-def ResNet152(num_classess):
-    return ResNet([3, 8, 36, 3], num_classess)
-
-    
-        
