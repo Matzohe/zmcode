@@ -70,7 +70,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(256, self.layers[2], stride=2)
         self.layer4 = self._make_layer(512, self.layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * self.bottleneck.expansion, self.num_classess)
+        self.fc = nn.Linear(512 * self.bottleneck.expansion, self.num_class)
 
     # Build residual block
     def _make_layer(self, channels, num_bottleneck, stride=1):

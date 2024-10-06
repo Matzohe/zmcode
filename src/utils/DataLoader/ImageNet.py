@@ -58,7 +58,7 @@ class ImageNetTrainDataset(Dataset):
         random.shuffle(self.root_list)
 
     def __getitem__(self, index):
-        return ImageNetPreProcess(self.root_list[index]), self.label_list[index]
+        return ImageNetPreProcess(self.root_list[index]).squeeze(0), self.label_list[index]
 
     def __len__(self):
         return len(self.root_list)
@@ -77,7 +77,7 @@ class ImageNetValDataset(Dataset):
         random.shuffle(self.root_list)
 
     def __getitem__(self, index):
-        return ImageNetPreProcess(self.root_list[index]), self.label_list[index]
+        return ImageNetPreProcess(self.root_list[index]).squeeze(0), self.label_list[index]
 
     def __len__(self):
         return len(self.root_list)
