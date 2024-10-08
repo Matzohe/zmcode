@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 import nibabel as nib
 from typing import List, Optional, Union
-from tqdm import tqdm
+from .utils.NSD_zscore import zscore_by_run
 
 
 class NSDDataset:
@@ -25,11 +25,11 @@ class NSDDataset:
         self.general_mask_save_root = config.NSD['general_mask_save_root']
         self.voxal_response_save_root = config.NSD['voxal_response_save_root']
         self.nonzero_mask_save_root = config.NSD['nonzero_mask_save_root']
-        
+    
+    # Get the NSD dataset stimulate infomation, the image index for each subject
     def extract_image_index(self, 
                             subj: int, 
                             save = False) -> List[int]:
-        # Get the NSD dataset information
 
         stim_info = pickle.load(self.stimuli_info)
         key = "subject{}_rep0".format(subj)
@@ -41,6 +41,7 @@ class NSDDataset:
 
         return image_index_list
     
+    # Get the NSD dataset stimulate infomation, the trail index (10000 * 3) for each subject, each row is in commone with the image index list
     def extract_trail_index(self, 
                             subj: int, 
                             save = False) -> List[List[int]]:
@@ -61,6 +62,7 @@ class NSDDataset:
 
         return trail_index
 
+    # Get the ROI mask for a certain subject, if roi is none, get the general mask for the subject
     def extract_roi_mask(self, 
                          subj: int, 
                          roi_name: str = "",
@@ -98,6 +100,8 @@ class NSDDataset:
 
             return new_roi_mask
 
+    # Get the voxal response for a certain subject, get voxal responses for the subj and the target roi, for all 40 sessions
+    # meanwhile, choose to process zscore process
     def extract_voxal_activation(self, 
                                  subj: int, 
                                  roi_name: str = "",
@@ -141,35 +145,11 @@ class NSDDataset:
                     np.sum(np.isfinite(cortical_beta_mat), axis=0)
                     == cortical_beta_mat.shape[0]
                 )
-                nonzero_mask_save_root = self.nonzero_mask_save_root.format(subj)
+                nonzero_mask_save_root = self.nonzero_mask_save_root.format(subj, roi_name)
                 torch.save(nonzero_mask, nonzero_mask_save_root)
             
         if save:
-            save_root = self.cortical_beta_save_root.format(subj)
+            save_root = self.voxal_response_save_root.format(subj)
             torch.save(cortical_beta_mat, save_root)
 
         return cortical_beta_mat
-
-
-def zscore_by_run(mat, run_n=480):
-    from scipy.stats import zscore
-
-    run_n = np.ceil(
-        mat.shape[0] / 62.5
-    )  # should be 480 for subject with full experiment\
-
-    zscored_mat = np.zeros(mat.shape)
-    index_so_far = 0
-    for i in tqdm(range(int(run_n))):
-        if i % 2 == 0:
-            zscored_mat[index_so_far : index_so_far + 62, :] = zscore(
-                mat[index_so_far : index_so_far + 62, :]
-            )
-            index_so_far += 62
-        else:
-            zscored_mat[index_so_far : index_so_far + 63, :] = zscore(
-                mat[index_so_far : index_so_far + 63, :]
-            )
-            index_so_far += 63
-
-    return zscored_mat
