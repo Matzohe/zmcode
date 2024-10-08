@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import nibabel as nib
 from typing import List, Optional, Union
+from tqdm import tqdm
 
 
 class NSDDataset:
@@ -16,12 +17,14 @@ class NSDDataset:
         self.general_mask_root = config.NSD['general_mask_root']
         self.roi_mask_root = config.NSD['roi_mask_root']
         self.session_num = int(config.NSD['session_num'])
+        self.beta_value_root = config.NSD['beta_value_root']
 
         self.image_index_save_path = config.NSD['image_index_save_path']
         self.image_trail_save_path = config.NSD['image_trail_save_path']
         self.roi_mask_save_root = config.NSD['roi_mask_save_root']
         self.general_mask_save_root = config.NSD['general_mask_save_root']
         self.voxal_response_save_root = config.NSD['voxal_response_save_root']
+        self.nonzero_mask_save_root = config.NSD['nonzero_mask_save_root']
         
     def extract_image_index(self, 
                             subj: int, 
@@ -82,7 +85,7 @@ class NSDDataset:
             roi_mask_root = self.roi_mask_root.format(subj, roi_name)
             roi_mask = nib.load(roi_mask_root).get_fdata()
 
-            roi_mask = roi_mask > 0
+            new_roi_mask = roi_mask > 0
             cortical = general_mask > -1
 
             roi_1d_mask = roi_mask[cortical].astype(int)
@@ -91,24 +94,16 @@ class NSDDataset:
                 save_root = self.roi_mask_save_root.format(subj, roi_name)
                 cortical_root = self.general_mask_save_root.format(subj, roi_name)
                 torch.save(roi_1d_mask, save_root)
-                torch.save(roi_mask, cortical_root)
+                torch.save(new_roi_mask, cortical_root)
 
-            return roi_mask
+            return new_roi_mask
 
     def extract_voxal_activation(self, 
                                  subj: int, 
                                  roi_name: str = "",
-                                 save=True
+                                 save=True,
+                                 zscore=True
                                  ):
-        try:
-            image_index_list = torch.load(self.image_index_save_path.format(subj))
-        except:
-            image_index_list = self.extract_image_index(subj=subj, save=True)
-        try:
-            trail_index_list = torch.load(self.image_trail_save_path.format(subj))
-        except:
-            trail_index_list = self.extract_trail_index(subj=subj, save=True)
-
         try:
             mask = torch.load(self.general_mask_save_root.format(subj, roi_name))
         except:
@@ -118,7 +113,63 @@ class NSDDataset:
         # We will target subject's 30000 fMRI activation
         # The output will process zscore by default
         
+        cortical_beta_mat = None
+
         for session in range(self.session_num):
             session_num = session + 1
+            beta_value_root = self.beta_value_root.format(subj, session_num)
+
+            fmri_data = nib.load(beta_value_root)
+            
+            beta = fmri_data.get_fdata()
+            cortical_beta = (beta[mask]).T  # verify the mask with array
+
+            if cortical_beta_mat is None:
+                cortical_beta_mat = cortical_beta / 300
+            
+            else:
+                cortical_beta_mat = np.vstack((cortical_beta_mat, cortical_beta / 300))
+
+        if zscore:
+            print("Zscoring...")
+            cortical_beta_mat = zscore_by_run(cortical_beta_mat)
+            finite_flag = np.all(np.isfinite(cortical_beta_mat))
+            print("Is finite:" + str(finite_flag))
+
+            if finite_flag == False:
+                nonzero_mask = (
+                    np.sum(np.isfinite(cortical_beta_mat), axis=0)
+                    == cortical_beta_mat.shape[0]
+                )
+                nonzero_mask_save_root = self.nonzero_mask_save_root.format(subj)
+                torch.save(nonzero_mask, nonzero_mask_save_root)
+            
+        if save:
+            save_root = self.cortical_beta_save_root.format(subj)
+            torch.save(cortical_beta_mat, save_root)
+
+        return cortical_beta_mat
 
 
+def zscore_by_run(mat, run_n=480):
+    from scipy.stats import zscore
+
+    run_n = np.ceil(
+        mat.shape[0] / 62.5
+    )  # should be 480 for subject with full experiment\
+
+    zscored_mat = np.zeros(mat.shape)
+    index_so_far = 0
+    for i in tqdm(range(int(run_n))):
+        if i % 2 == 0:
+            zscored_mat[index_so_far : index_so_far + 62, :] = zscore(
+                mat[index_so_far : index_so_far + 62, :]
+            )
+            index_so_far += 62
+        else:
+            zscored_mat[index_so_far : index_so_far + 63, :] = zscore(
+                mat[index_so_far : index_so_far + 63, :]
+            )
+            index_so_far += 63
+
+    return zscored_mat
