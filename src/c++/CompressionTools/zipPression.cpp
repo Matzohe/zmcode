@@ -8,7 +8,7 @@
 
 int main(){
 
-    std::ifstream file("/Users/a1/Documents/OneMarkdown.zip");
+    std::ifstream file("/Users/a1/PythonProgram/zmcode/testDataset/caffe_ilsvrc12.zip");
     // 设置文件读写位置
     // 分多段进行压缩和解压缩
     file.seekg(0, std::ios::end);
@@ -40,7 +40,7 @@ int main(){
     std::cout << output_str.size() << std::endl;
     std::string decoder_2 = rollingHash.DecodeLZ77WithInfo(output_str);
     std::ofstream decoded_file("OneMarkdown.zip", std::ios::app);
-    decoded_file << decoder_2 << std::endl;
+    decoded_file << decoder_2;
     decoded_file.close();
 
     end = std::chrono::steady_clock::now();
