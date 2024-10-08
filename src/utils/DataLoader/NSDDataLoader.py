@@ -3,7 +3,8 @@ import numpy as np
 import pickle
 import nibabel as nib
 from typing import List, Optional, Union
-from .utils.NSD_zscore import zscore_by_run
+from tqdm import tqdm
+from .utils.NSD_utils import zscore_by_run, ev
 
 
 class NSDDataset:
@@ -23,13 +24,19 @@ class NSDDataset:
         self.image_trail_save_path = config.NSD['image_trail_save_path']
         self.roi_mask_save_root = config.NSD['roi_mask_save_root']
         self.general_mask_save_root = config.NSD['general_mask_save_root']
-        self.voxal_response_save_root = config.NSD['voxal_response_save_root']
+        self.voxal_zscore_response_save_root = config.NSD['voxal_zscore_response_save_root']
+        self.voxal_nonzscore_response_save_root = config.NSD['voxal_nonzscore_response_save_root']
         self.nonzero_mask_save_root = config.NSD['nonzero_mask_save_root']
+        self.zscore_avg_activation_save_root = config.NSD['zscore_avg_activation_save_root']
+        self.zscore_activation_ev_save_root = config.NSD['zscore_activation_ev_save_root']
+        self.nonzscore_avg_activation_save_root = config.NSD['nonzscore_avg_activation_save_root']
+        self.nonzscore_activation_ev_save_root = config.NSD['nonzscore_activation_ev_save_root']
     
     # Get the NSD dataset stimulate infomation, the image index for each subject
     def extract_image_index(self, 
                             subj: int, 
-                            save = False) -> List[int]:
+                            save = False, 
+                            ) -> List[int]:
 
         stim_info = pickle.load(self.stimuli_info)
         key = "subject{}_rep0".format(subj)
@@ -44,7 +51,8 @@ class NSDDataset:
     # Get the NSD dataset stimulate infomation, the trail index (10000 * 3) for each subject, each row is in commone with the image index list
     def extract_trail_index(self, 
                             subj: int, 
-                            save = False) -> List[List[int]]:
+                            save = False, 
+                            ) -> np.ndarray:
         # Get the fmri signal index for each image in test for a certain subj
         # each image has 3 trails, finally we will get 10000 * 3 trails
 
@@ -66,7 +74,8 @@ class NSDDataset:
     def extract_roi_mask(self, 
                          subj: int, 
                          roi_name: str = "",
-                         save=False) -> np.ndarray:
+                         save=False
+                         ) -> np.ndarray:
         # Get the ROI mask for a certain subject
         if roi_name == "": # cortical
             general_mask_root = self.general_mask_root
@@ -106,7 +115,7 @@ class NSDDataset:
                                  subj: int, 
                                  roi_name: str = "",
                                  save=True,
-                                 zscore=True
+                                 zscore=False, 
                                  ):
         try:
             mask = torch.load(self.general_mask_save_root.format(subj, roi_name))
@@ -149,7 +158,58 @@ class NSDDataset:
                 torch.save(nonzero_mask, nonzero_mask_save_root)
             
         if save:
-            save_root = self.voxal_response_save_root.format(subj)
+            if zscore:
+                save_root = self.voxal_zscore_response_save_root.format(subj, roi_name)
+            else:
+                save_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
             torch.save(cortical_beta_mat, save_root)
 
         return cortical_beta_mat
+
+
+# compute an average voxal activation for three time repeate images
+    def compute_ev(self,
+                   subj: int,
+                   roi_name: str = "",
+                   zscored: bool = False, 
+                   biascorr: bool = False,
+                   save: bool = True,
+                   ) -> torch.Tensor:
+        trail_root = self.image_trail_save_path.format(subj)
+        if zscored:
+            response_root = self.voxal_zscore_response_save_root.format(subj, roi_name)
+        else:
+            response_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
+
+        response_data = torch.load(response_root)
+        trail_data = torch.load(trail_root)
+        repeat_num = trail_data.shape[0]
+
+        ev_list = []
+        average_voxal_activation = torch.zeros(size=(repeat_num, response_data.shape[1]))
+
+        for v in tqdm(range(response_data.shape[1]), desc="computing everage voxal activations"):
+            repo_data_list = []
+            for r in range(self.repo):
+                repo_data_list.append(response_data[trail_data[:, r], v])
+            repo_data_list = torch.cat(repo_data_list, dim=0).T
+
+            average_voxal_activation[:, v] = torch.mean(repo_data_list, dim=1)
+
+            ev_list.append(ev(repo_data_list, biascorr=biascorr))
+
+        ev_list = torch.cat(ev_list, dim=0)
+
+        if save:
+            if zscored:
+                avg_avtivation_save_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
+                ev_avtivation_save_root = self.zscore_activation_ev_save_root.format(subj, roi_name)
+            else:
+                avg_avtivation_save_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
+                ev_avtivation_save_root = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
+
+            torch.save(average_voxal_activation, avg_avtivation_save_root)
+            torch.save(ev_list, ev_avtivation_save_root)
+        
+        return ev_list
+        
