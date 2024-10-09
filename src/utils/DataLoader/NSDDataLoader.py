@@ -31,6 +31,8 @@ class NSDDataset:
         self.zscore_activation_ev_save_root = config.NSD['zscore_activation_ev_save_root']
         self.nonzscore_avg_activation_save_root = config.NSD['nonzscore_avg_activation_save_root']
         self.nonzscore_activation_ev_save_root = config.NSD['nonzscore_activation_ev_save_root']
+
+        self.pure_response_save_root = config.NSD['pure_response_save_root']
     
     # Get the NSD dataset stimulate infomation, the image index for each subject
     def extract_image_index(self, 
@@ -213,3 +215,38 @@ class NSDDataset:
         
         return ev_list
         
+    def get_pure_activation(self,
+                            subj: int,
+                            roi_name: str = "",
+                            zscored: bool = False,
+                            save: bool = True
+                            ) -> torch.Tensor:
+        
+        trail_root = self.image_trail_save_path.format(subj)
+
+        if zscored:
+            response_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
+        else:
+            response_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
+
+        response_data = torch.load(response_root)
+        trail_data = torch.load(trail_root)
+
+        pure_list = []
+
+        for v in tqdm(range(response_data.shape[1]), desc="computing everage voxal activations"):
+            repo_data_list = []
+            for r in range(self.repo):
+                repo_data_list.append(response_data[trail_data[:, r], v])
+            
+            repo_data_list = torch.cat(repo_data_list, dim=0).T.unsqueeze(1) # 10000 * 1 * 3
+            
+            pure_list.append(repo_data_list)
+            
+        pure_list = torch.cat(pure_list, dim=1) # 10000 * voxal_num * 3
+
+        if save:
+            pure_activation_save_root = self.pure_activation_save_root.format(subj, roi_name)
+            torch.save(pure_list, pure_activation_save_root)
+
+        return pure_list
