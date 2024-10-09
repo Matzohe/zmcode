@@ -5,6 +5,7 @@ import nibabel as nib
 from typing import List, Optional, Union
 from tqdm import tqdm
 from .utils.NSD_utils import zscore_by_run, ev
+from ..utils import check_path
 
 
 class NSDDataset:
@@ -20,8 +21,8 @@ class NSDDataset:
         self.session_num = int(config.NSD['session_num'])
         self.beta_value_root = config.NSD['beta_value_root']
 
-        self.image_index_save_path = config.NSD['image_index_save_path']
-        self.image_trail_save_path = config.NSD['image_trail_save_path']
+        self.image_index_save_root = config.NSD['image_index_save_root']
+        self.image_trail_save_path = config.NSD['image_trail_save_root']
         self.roi_mask_save_root = config.NSD['roi_mask_save_root']
         self.general_mask_save_root = config.NSD['general_mask_save_root']
         self.voxal_zscore_response_save_root = config.NSD['voxal_zscore_response_save_root']
@@ -45,7 +46,8 @@ class NSDDataset:
         image_index_list = stim_info.cocoId[stim_info[key] != 0]
 
         if save:
-            save_path = self.image_index_save_path.format(subj)
+            save_path = self.image_index_save_root.format(subj)
+            check_path(save_path)
             torch.save(image_index_list, save_path)
 
         return image_index_list
@@ -68,6 +70,7 @@ class NSDDataset:
 
         if save:
             save_path = self.image_trail_save_path.format(subj)
+            check_path(save_path)
             torch.save(trail_index, save_path)
 
         return trail_index
@@ -86,8 +89,9 @@ class NSDDataset:
             general_mask = general_mask > -1
 
             if save:
-                save_root = self.general_mask_save_root.format(subj, roi_name)
-                torch.save(general_mask, save_root)
+                save_path = self.general_mask_save_root.format(subj, roi_name)
+                check_path(save_path)
+                torch.save(general_mask, save_path)
 
             return general_mask
         
@@ -104,10 +108,12 @@ class NSDDataset:
             roi_1d_mask = roi_mask[cortical].astype(int)
 
             if save:
-                save_root = self.roi_mask_save_root.format(subj, roi_name)
-                cortical_root = self.general_mask_save_root.format(subj, roi_name)
-                torch.save(roi_1d_mask, save_root)
-                torch.save(new_roi_mask, cortical_root)
+                save_path = self.roi_mask_save_root.format(subj, roi_name)
+                cortical_path = self.general_mask_save_root.format(subj, roi_name)
+                check_path(save_path)
+                check_path(cortical_path)
+                torch.save(roi_1d_mask, save_path)
+                torch.save(new_roi_mask, cortical_path)
 
             return new_roi_mask
 
@@ -161,10 +167,11 @@ class NSDDataset:
             
         if save:
             if zscore:
-                save_root = self.voxal_zscore_response_save_root.format(subj, roi_name)
+                save_path = self.voxal_zscore_response_save_root.format(subj, roi_name)
             else:
-                save_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
-            torch.save(cortical_beta_mat, save_root)
+                save_path = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
+            check_path(save_path)
+            torch.save(cortical_beta_mat, save_path)
 
         return cortical_beta_mat
 
@@ -204,14 +211,15 @@ class NSDDataset:
 
         if save:
             if zscored:
-                avg_avtivation_save_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
-                ev_avtivation_save_root = self.zscore_activation_ev_save_root.format(subj, roi_name)
+                avg_avtivation_save_path = self.zscore_avg_activation_save_root.format(subj, roi_name)
+                ev_avtivation_save_path = self.zscore_activation_ev_save_root.format(subj, roi_name)
             else:
-                avg_avtivation_save_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
-                ev_avtivation_save_root = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
-
-            torch.save(average_voxal_activation, avg_avtivation_save_root)
-            torch.save(ev_list, ev_avtivation_save_root)
+                avg_avtivation_save_path = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
+                ev_avtivation_save_path = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
+            check_path(avg_avtivation_save_path)
+            check_path(ev_avtivation_save_path)
+            torch.save(average_voxal_activation, avg_avtivation_save_path)
+            torch.save(ev_list, ev_avtivation_save_path)
         
         return ev_list
         
@@ -246,7 +254,8 @@ class NSDDataset:
         pure_list = torch.cat(pure_list, dim=1) # 10000 * voxal_num * 3
 
         if save:
-            pure_activation_save_root = self.pure_activation_save_root.format(subj, roi_name)
-            torch.save(pure_list, pure_activation_save_root)
+            pure_activation_save_path = self.pure_activation_save_root.format(subj, roi_name)
+            check_path(pure_activation_save_path)
+            torch.save(pure_list, pure_activation_save_path)
 
         return pure_list

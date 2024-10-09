@@ -9,10 +9,17 @@ import cv2
 import random
 from torchvision import transforms
 from PIL import Image
+import os
 
 # ==================================================
 # Config Related Functions
 # ==================================================
+
+def check_path(path):
+    path = "/".join(path.split("/")[ :-1])
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 @dataclass
 class INICfg:
     # An example of INI config dataclass
