@@ -1,17 +1,21 @@
 import torch
 from typing import Union
+from .utils import check_path
 
 class CKAforNSD:
     def __init__(self, config):
         self.config = config
         self.nsd_response_data_root = config.NSD['pure_response_save_root']
         self.cka_batch_size = int(config.NSD['cka_batch_size'])
+        self.cka_save_root = config.NSD['cka_save_root']
 
-    def process(self, subj1, roi1, subj2: Union[str] = None, roi2: Union[str] = None):
+    def process(self, subj1, roi1, subj2: Union[str] = None, roi2: Union[str] = None, save=True):
         
         # load data
         response1 = torch.load(self.nsd_response_data_root.format(subj1, roi1))
         if subj2 is None or roi2 is None:
+            subj2 = subj1
+            roi2 = roi1
             response2 = torch.load(self.nsd_response_data_root.format(subj1, roi1))
         else:
             response2 = torch.load(self.nsd_response_data_root.format(subj2, roi2))
@@ -48,6 +52,11 @@ class CKAforNSD:
         
         cka_matrix = cka_matrix[:, :, 1] / (cka_matrix[:, :, 0].sqrt() *
                                                         cka_matrix[:, :, 2].sqrt())
+        
+        if save:
+            cka_save_path = self.cka_save_root.format(subj1, roi1, subj2, roi2)
+            check_path(cka_save_path)
+            torch.save(cka_matrix, cka_save_path)
 
         return cka_matrix
 

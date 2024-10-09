@@ -4,6 +4,7 @@ import pickle
 import nibabel as nib
 from typing import List, Optional, Union
 from tqdm import tqdm
+import pandas as pd
 from .utils.NSD_utils import zscore_by_run, ev
 from ..utils import check_path
 
@@ -41,9 +42,9 @@ class NSDDataset:
                             save = False, 
                             ) -> List[int]:
 
-        stim_info = pickle.load(self.stimuli_info)
+        stim_info = pd.read_pickle(self.stimuli_info)
         key = "subject{}_rep0".format(subj)
-        image_index_list = stim_info.cocoId[stim_info[key] != 0]
+        image_index_list = list(stim_info.cocoId[stim_info[key] != 0])
 
         if save:
             save_path = self.image_index_save_root.format(subj)
@@ -60,12 +61,12 @@ class NSDDataset:
         # Get the fmri signal index for each image in test for a certain subj
         # each image has 3 trails, finally we will get 10000 * 3 trails
 
-        stim_info = pickle.load(self.stimuli_info)
+        stim_info = pd.read_pickle(self.stimuli_info)
         key = "subject{}_rep{}"
         trail_index = []
         for i in range(self.repo):
             select_info = key.format(subj, i)
-            trail_index.append(stim_info[select_info][stim_info[select_info]] != 0)
+            trail_index.append(list(stim_info[select_info][stim_info[select_info]] != 0))
         trail_index = np.array(trail_index).T - 1  # Turn to shape [10000, 3], and change from 1 based to 0 based
 
         if save:
