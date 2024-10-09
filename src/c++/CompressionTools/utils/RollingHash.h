@@ -54,13 +54,18 @@ public:
     std::string EncodeLZ77(int before_position, int length);
 
     // 使用滚动哈希实现LZ77压缩，返回压缩后的字符串
-    void RollingHashProcess(const std::string& str);
+    std::string RollingHashProcess(const std::string& str);
 
     std::unordered_map<unsigned int, long long> getCharcount(std::string str);
 
     std::string DecodeLZ77(std::string str);
 
     std::string DecodeLZ77WithInfo(std::string str);
+
+    std::string getDecodeInfo(){return decodeInfo;};
+
+    void setDecodeInfo(std::string info){decodeInfo = info;};
+    
 };
 
 #endif

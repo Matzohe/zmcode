@@ -45,31 +45,5 @@ int main(){
 
     end = std::chrono::steady_clock::now();
     std::cout << "decompression Time cost = " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "[ms]" << std::endl;
-
-    // std::unordered_map<unsigned int, std::string> huffmanCode;
-    // HuffmanTree huffmanTree(huffmanCode, nullptr);
-    // std::unordered_map<unsigned int, long long> charcount = rollingHash.getCharcount(output_str);
-
-    // std::cout << charcount.size() << std::endl;
-
-    // huffmanTree.initializeHuffmanTree(charcount);
-
-    // huffmanTree.encode(input_str);
-    
-    // std::ifstream encoded_file("new_example.txt");
-    // std::stringstream buffer_encode;
-    // buffer_encode << encoded_file.rdbuf();
-    // encoded_file.close();
-    // std::string encoded_str = buffer_encode.str();
-    // std::string decoder_1 = huffmanTree.decode(encoded_str);
-    // std::ofstream decoded_file("output.txt", std::ios::app);
-    // decoded_file << decoder_1 << std::endl;
-    // decoded_file.close();
-
-
-    // std::string decoder_2 = rollingHash.DecodeLZ77WithInfo(decoder_1);
-    // std::ofstream decoded_file("output.txt", std::ios::app);
-    // decoded_file << decoder_2 << std::endl;
-    // decoded_file.close();
     return 0;
 }

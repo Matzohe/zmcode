@@ -109,7 +109,7 @@ std::string RollingHash::EncodeLZ77(int before_position, int length){
 
 
 // TODO:编码部分可以进行多线程，通过创建多个文件进行多线程编码
-void RollingHash::RollingHashProcess(const std::string& str_input){
+std::string RollingHash::RollingHashProcess(const std::string& str_input){
     // 首先初始化哈希表
     InitRollingHash(str_input);
     std::string encodedString = "";
@@ -144,6 +144,7 @@ void RollingHash::RollingHashProcess(const std::string& str_input){
     std::ofstream current_file("example.txt", std::ios::app);
     current_file << encodedString;
     current_file.close();
+    return encodedString;
 }
 
 std::unordered_map<unsigned int, long long> RollingHash::getCharcount(std::string str){
