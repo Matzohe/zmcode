@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 from tqdm import tqdm
 import pandas as pd
 from .utils.NSD_utils import zscore_by_run, ev
-from ..utils import check_path
+from ..utils import check_path, check_tensor
 
 
 class NSDDataset:
@@ -131,6 +131,8 @@ class NSDDataset:
         except:
             mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
         
+        mask = check_tensor(mask)
+
         # for each person, there is 40 session, and each session has 750 figs
         # We will target subject's 30000 fMRI activation
         # The output will process zscore by default
@@ -202,13 +204,13 @@ class NSDDataset:
             repo_data_list = []
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
-            repo_data_list = torch.cat(repo_data_list, dim=0).T
+            repo_data_list = torch.tensor(repo_data_list, dim=0).T
 
             average_voxal_activation[:, v] = torch.mean(repo_data_list, dim=1)
 
             ev_list.append(ev(repo_data_list, biascorr=biascorr))
 
-        ev_list = torch.cat(ev_list, dim=0)
+        ev_list = torch.tensor(ev_list)
 
         if save:
             if zscored:
@@ -234,9 +236,9 @@ class NSDDataset:
         trail_root = self.image_trail_save_path.format(subj)
 
         if zscored:
-            response_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
+            response_root = self.voxal_zscore_response_save_root.format(subj, roi_name)
         else:
-            response_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
+            response_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
 
         response_data = torch.load(response_root)
         trail_data = torch.load(trail_root)
@@ -248,15 +250,15 @@ class NSDDataset:
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
             
-            repo_data_list = torch.cat(repo_data_list, dim=0).T.unsqueeze(1) # 10000 * 1 * 3
+            repo_data_list = torch.tensor(repo_data_list).T.unsqueeze(1) # 10000 * 1 * 3
             
             pure_list.append(repo_data_list)
             
         pure_list = torch.cat(pure_list, dim=1) # 10000 * voxal_num * 3
 
         if save:
-            pure_activation_save_path = self.pure_activation_save_root.format(subj, roi_name)
-            check_path(pure_activation_save_path)
-            torch.save(pure_list, pure_activation_save_path)
+            pure_response_save_path = self.pure_response_save_root.format(subj, roi_name)
+            check_path(pure_response_save_path)
+            torch.save(pure_list, pure_response_save_path)
 
         return pure_list

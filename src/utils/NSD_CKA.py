@@ -1,5 +1,6 @@
 import torch
 from typing import Union
+from tqdm import tqdm
 from .utils import check_path
 
 class CKAforNSD:
@@ -26,7 +27,7 @@ class CKAforNSD:
             batch_num += 1
         cka_matrix = torch.zeros(size=[response1.shape[1], response2.shape[1], 3])
 
-        for batch in range(batch_num):
+        for batch in tqdm(range(batch_num), desc="NSD CKA Processing..."):
             if batch == batch_num - 1:
                 size = response1.shape[0] - batch * self.cka_batch_size
             else:
@@ -67,8 +68,10 @@ class CKAforNSD:
         Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
         """
         N = K.shape[0]
-        ones = torch.ones(N, 1).to(self.device)
-        result = torch.trace(K @ L)
+        K = K.to(dtype=torch.float32)
+        L = L.to(dtype=torch.float32)
+        ones = torch.ones(N, 1, dtype=torch.float32)
+        result = torch.trace(K @ L).to(dtype=torch.float32)
         result += ((ones.t() @ K @ ones @ ones.t() @ L @ ones) / ((N - 1) * (N - 2))).item()
         result -= ((ones.t() @ K @ L @ ones) * 2 / (N - 2)).item()
         return (1 / (N * (N - 3)) * result).item()

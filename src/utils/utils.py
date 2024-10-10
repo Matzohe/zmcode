@@ -12,7 +12,7 @@ from PIL import Image
 import os
 
 # ==================================================
-# Config Related Functions
+# utils to check several things
 # ==================================================
 
 def check_path(path):
@@ -20,6 +20,22 @@ def check_path(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+def check_tensor(data):
+    if isinstance(data, torch.Tensor):
+        return data
+    elif isinstance(data, np.ndarray):
+        return torch.from_numpy(data)
+    else:
+        try:
+            data = torch.tensor(data)
+            return data
+        except ValueError:
+            print("Current data type not support to transform to torch.Tensor")
+
+
+# ==================================================
+# Config Related Functions
+# ==================================================
 @dataclass
 class INICfg:
     # An example of INI config dataclass
