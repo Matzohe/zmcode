@@ -27,29 +27,39 @@ class CKAforNSD:
             batch_num += 1
         cka_matrix = torch.zeros(size=[response1.shape[1], response2.shape[1], 3])
 
-        for batch in tqdm(range(batch_num), desc="NSD CKA Processing..."):
+
+        # the middle information is gient, save it then compute the CKA
+
+        for batch in range(batch_num):
             if batch == batch_num - 1:
                 size = response1.shape[0] - batch * self.cka_batch_size
             else:
                 size = self.cka_batch_size
-            for i in range(response1.shape[1]):
+            
+            save_k_list = []
+            save_l_list = []
+
+            for i in tqdm(range(response1.shape[1]), desc="batch{} K Processing...".format(batch)):
 
                 data1 = response1[self.cka_batch_size * batch: self.cka_batch_size * batch + size, i, :]
                 data1.view(size, -1)
                 K = data1 @ data1.t()
                 K.fill_diagonal_(0.0)
                 cka_matrix[i, :, 0] += self._HSIC(K, K) / size
+                save_k_list.append(K)
 
-                for j in range(response2.shape[1]):
+            for j in tqdm(range(response2.shape[1]), desc="batch{} L Processing...".format(batch)):
 
-                    data2 = response2[self.cka_batch_size * batch: self.cka_batch_size * batch + size, j, :]
-                    data2.view(size, -1)
-                    L = data2 @ data2.t()
-                    L.fill_diagonal_(0.0)
-                    assert K.shape == L.shape, f"Feature shape mistach! {K.shape}, {L.shape}"
+                data2 = response2[self.cka_batch_size * batch: self.cka_batch_size * batch + size, j, :]
+                data2.view(size, -1)
+                L = data2 @ data2.t()
+                L.fill_diagonal_(0.0)
+                save_l_list.append(L)
 
-                    cka_matrix[i, j, 1] += self._HSIC(K, L)
-                    cka_matrix[i, j, 2] += self._HSIC(L, L)
+            for i, each_K in tqdm(enumerate(save_k_list), desc="batch{} CKA Process".format(batch)):
+                for j, each_L in enumerate(save_l_list):
+                    cka_matrix[i, j, 1] += self._HSIC(each_K, each_L) / size
+                    cka_matrix[i, j, 2] += self._HSIC(each_L, each_L) / size
         
         cka_matrix = cka_matrix[:, :, 1] / (cka_matrix[:, :, 0].sqrt() *
                                                         cka_matrix[:, :, 2].sqrt())
