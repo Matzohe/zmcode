@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from tqdm import tqdm
 import time
-
+from .ImagePreporcessUitls import BarlowTwinsTransform
 from .CheckPointUtils import save_checkpoint
 
 def SerialBarlowTwinsModelTrainer(
@@ -47,8 +47,8 @@ def SerialBarlowTwinsModelTrainer(
             # TODO: add Image preprocess
             serial_num += 1
             _x = _x.to(config.TRAINING['device'])
-            image1 = preprocess(_x)
-            image2 = preprocess(_x)
+            image1 = BarlowTwinsTransform(_x)
+            image2 = BarlowTwinsTransform(_x)
             loss = model(image1, image2)
             loss.backward()
             if serial_num < serial_size:
