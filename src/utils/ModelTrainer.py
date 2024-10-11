@@ -10,6 +10,7 @@ from tqdm import tqdm
 import time
 from .ImagePreporcessUitls import BarlowTwinsTransform
 from .CheckPointUtils import save_checkpoint
+from .OptimizerUtils import LARS_adjust_learning_rate
 
 def SerialBarlowTwinsModelTrainer(
     config,
@@ -51,19 +52,27 @@ def SerialBarlowTwinsModelTrainer(
             image2 = BarlowTwinsTransform(_x)
             loss = model(image1, image2)
             loss.backward()
+            LARS_adjust_learning_rate(config, optimizer, train_dataloader, batch_num + epoch * len(train_dataloader))
             if serial_num < serial_size:
                 all_batch_loss += loss.detach().cpu()
+                if batch_num == len(train_dataloader) - 1:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    if summary_writer is not None:
+                        summary_writer.add_scalar("Loss", all_batch_loss / serial_num, epoch * len(train_dataloader) + batch_num )
+                    serial_num = 0
+                    all_batch_loss = 0
                 continue
             else:
-                serial_num = 0
                 all_batch_loss += loss.detach().cpu()
             optimizer.step()
             optimizer.zero_grad()
 
             # write training loss to tensorboard
             if summary_writer is not None:
-                summary_writer.add_scalar("Loss", all_batch_loss, epoch * len(train_dataloader) + batch_num)
+                summary_writer.add_scalar("Loss", all_batch_loss / serial_num, epoch * len(train_dataloader) + batch_num )
             all_batch_loss = 0
+            serial_num = 0
             end_time = time.perf_counter()
 
             # save training check point
