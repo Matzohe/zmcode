@@ -11,6 +11,75 @@ import time
 
 from .CheckPointUtils import save_checkpoint
 
+def SerialBarlowTwinsModelTrainer(
+    config,
+    model: nn.Module,
+    train_dataloader,
+    optimizer: torch.optim.Optimizer,
+    val_dataloader = None,
+    summary_writer: Union[SummaryWriter] = None,
+    from_checkpoint: bool = False,
+    checkpoint_path: str = None):
+
+    epochs = int(config.MODEL['epoch'])
+    dataloader_batch_size = train_dataloader.batch_size
+    training_batch_size = int(config.BARLOWTWINS['batch_size'])
+    serial_size = training_batch_size // dataloader_batch_size  # use for serial training
+
+    if from_checkpoint:
+        try:
+            checkpoint = torch.load(checkpoint_path)
+        except:
+            raise RuntimeError("Something wrong with checkpoint loading, please check your checkpoint path")
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        before_batch_idx = checkpoint['batch_idx']
+        before_epoch_idx = checkpoint['epoch_idx']
+        print("Checkpoint loaded at {}".format(checkpoint_path))
+    
+    # TODO: change to multi-gpu training
+    for epoch in range(before_epoch_idx, epochs):
+        start_time = time.perf_counter()
+
+        serial_num = 0
+        all_batch_loss = 0
+        for batch_num, (_x, _) in tqdm(enumerate(train_dataloader, start=before_batch_idx), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+            # TODO: add Image preprocess
+            serial_num += 1
+            _x = _x.to(config.TRAINING['device'])
+            image1 = preprocess(_x)
+            image2 = preprocess(_x)
+            loss = model(image1, image2)
+            loss.backward()
+            if serial_num < serial_size:
+                all_batch_loss += loss.detach().cpu()
+                continue
+            else:
+                serial_num = 0
+                all_batch_loss += loss.detach().cpu()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            # write training loss to tensorboard
+            if summary_writer is not None:
+                summary_writer.add_scalar("Loss", all_batch_loss, epoch * len(train_dataloader) + batch_num)
+            all_batch_loss = 0
+            end_time = time.perf_counter()
+
+            # save training check point
+            if end_time - start_time > int(config.TRAINING["checkpoint_save_time"]):
+                save_checkpoint(config, model, optimizer, batch_num, epoch)
+                start_time = time.perf_counter()
+    # save trained model
+    model_state_dict = model.state_dict()
+    save_root = config.TRAINING["model_save_root"].format(type(model).__name__)
+    if not os.path.exists("/".join(save_root.split('/')[:-1])):
+        os.makedirs("/".join(save_root.split('/')[:-1]))
+    torch.save(model_state_dict, save_root)
+    print("Model saved at {}".format(save_root))
+
+
+
 # TODO: Add UnsupervisedModelTrainer
 def BasicSupervisedModelTrainer(
     config,

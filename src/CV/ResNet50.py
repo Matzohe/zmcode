@@ -26,6 +26,7 @@ class Bottleneck(nn.Module):
         self.conv3 = nn.Conv2d(channels, channels * self.expansion, kernel_size=1,
                             stride=1, bias=False)
         self.bn3 = nn.BatchNorm2d(channels *self.expansion)
+        self.bn3.WITH_RESIDUAL = True
         self.relu = nn.ReLU(inplace=True)
         if stride != 1 or in_channels != channels * self.expansion:
             self.downsample = nn.Sequential(

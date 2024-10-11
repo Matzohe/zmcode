@@ -27,7 +27,7 @@ def save_checkpoint(
     
     checkpoint = CheckPoint(model.state_dict(), optimizer.state_dict(), batch_idx, epoch_idx)
     checkpoint_save_name = os.path.join(config.TRAINING["checkpoint_dir"].format(type(model).__name__), 
-                                        config.TRAINING["checkpoint_save_name"].format(epoch_idx, batch_idx))
+                                        config.TRAINING["checkpoint_save_name"])
     if not os.path.exists(config.TRAINING["checkpoint_dir"].format(type(model).__name__)):
         try:
             os.mkdir(config.TRAINING["checkpoint_dir"].format(type(model).__name__))

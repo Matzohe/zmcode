@@ -38,3 +38,5 @@ def ImageNetPreProcess(image_path: str) -> torch.Tensor:
     ])
 
     return preprocess(image).unsqueeze(0)
+
+

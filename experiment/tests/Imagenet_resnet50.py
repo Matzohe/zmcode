@@ -3,6 +3,7 @@ from src.utils.OptimizerUtils import configure_optimizers
 from src.utils.ModelTrainer import BasicSupervisedModelTrainer
 from src.utils.utils import set_seed, INIconfig
 from src.utils.DataLoader.ImageNet import get_imagenet_training_dataloader, get_imagenet_validation_dataloader
+from src.utils.ModelInitializeUtils import CNN_initialize
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
