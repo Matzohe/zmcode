@@ -27,6 +27,9 @@ def SerialBarlowTwinsModelTrainer(
     training_batch_size = int(config.BARLOWTWINS['batch_size'])
     serial_size = training_batch_size // dataloader_batch_size  # use for serial training
 
+    before_batch_idx = 0
+    before_epoch_idx = 0
+    transform = BarlowTwinsTransform()
     if from_checkpoint:
         try:
             checkpoint = torch.load(checkpoint_path)
@@ -48,13 +51,12 @@ def SerialBarlowTwinsModelTrainer(
             # TODO: add Image preprocess
             serial_num += 1
             _x = _x.to(config.TRAINING['device'])
-            image1 = BarlowTwinsTransform(_x)
-            image2 = BarlowTwinsTransform(_x)
+            image1, image2 = transform(_x)
             loss = model(image1, image2)
             loss.backward()
             LARS_adjust_learning_rate(config, optimizer, train_dataloader, batch_num + epoch * len(train_dataloader))
+            all_batch_loss += loss.detach().cpu()
             if serial_num < serial_size:
-                all_batch_loss += loss.detach().cpu()
                 if batch_num == len(train_dataloader) - 1:
                     optimizer.step()
                     optimizer.zero_grad()
@@ -63,8 +65,7 @@ def SerialBarlowTwinsModelTrainer(
                     serial_num = 0
                     all_batch_loss = 0
                 continue
-            else:
-                all_batch_loss += loss.detach().cpu()
+
             optimizer.step()
             optimizer.zero_grad()
 
@@ -79,6 +80,7 @@ def SerialBarlowTwinsModelTrainer(
             if end_time - start_time > int(config.TRAINING["checkpoint_save_time"]):
                 save_checkpoint(config, model, optimizer, batch_num, epoch)
                 start_time = time.perf_counter()
+        before_batch_idx = 0
     # save trained model
     model_state_dict = model.state_dict()
     save_root = config.TRAINING["model_save_root"].format(type(model).__name__)
