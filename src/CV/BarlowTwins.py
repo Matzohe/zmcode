@@ -36,7 +36,7 @@ class BarlowTwins(nn.Module):
 
         on_diag = torch.diagonal(c).add_(-1).pow_(2).sum()
         off_diag = off_diagonal(c).pow_(2).sum()
-        lambd = torch.float(self.config.BARLOWTWINS['lambd']).to(device=c.device)
+        lambd = float(self.config.BARLOWTWINS['lambd'])
         loss = on_diag + lambd * off_diag
         return loss
 

@@ -47,11 +47,11 @@ def SerialBarlowTwinsModelTrainer(
 
         serial_num = 0
         all_batch_loss = 0
-        for batch_num, (_x, _) in tqdm(enumerate(train_dataloader, start=before_batch_idx), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+        for batch_num, ((_x, _y), _) in tqdm(enumerate(train_dataloader, start=before_batch_idx), desc=f"Epoch {epoch}", total=len(train_dataloader)):
             # TODO: add Image preprocess
             serial_num += 1
-            _x = _x.to(config.TRAINING['device'])
-            image1, image2 = transform(_x)
+            image1 = _x.to(config.TRAINING['device'])
+            image2 = _y.to(config.TRAINING['device'])
             loss = model(image1, image2)
             loss.backward()
             LARS_adjust_learning_rate(config, optimizer, train_dataloader, batch_num + epoch * len(train_dataloader))

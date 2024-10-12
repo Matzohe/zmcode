@@ -31,9 +31,7 @@ def ImageNetPreProcess(image_path: str) -> torch.Tensor:
     # The hyperparameters in the Normalize is the average and standard deviation of ImageNet
 
     # TODO: bug here, need to check linux's web
-    image = Image.open(image_path)
-    if image.mode == "L":
-        image = image.convert("RGB")
+    image = Image.open(image_path).convert("RGB")
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),

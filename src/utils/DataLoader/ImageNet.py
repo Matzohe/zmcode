@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+import torchvision
 import torchvision.transforms as transforms
 from collections import OrderedDict
 import os
@@ -66,7 +67,8 @@ class BarlowTwinsTrainDataset(Dataset):
 
 
 def get_BarlowTwins_training_dataloader(config):
-    dataset = BarlowTwinsTrainDataset(config)
+
+    dataset = torchvision.datasets.ImageFolder(config.DATASET['imagenet_root'], BarlowTwinsTransform())
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=int(config.DATALOADER["batch_size"]),

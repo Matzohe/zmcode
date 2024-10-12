@@ -30,7 +30,7 @@ def save_checkpoint(
                                         config.TRAINING["checkpoint_save_name"])
     if not os.path.exists(config.TRAINING["checkpoint_dir"].format(type(model).__name__)):
         try:
-            os.mkdir(config.TRAINING["checkpoint_dir"].format(type(model).__name__))
+            os.makedirs(config.TRAINING["checkpoint_dir"].format(type(model).__name__))
         except:
             raise ValueError("Can't create checkpoint dir, you need to create the root path before create the checkpoint file")
     torch.save(checkpoint, checkpoint_save_name)
