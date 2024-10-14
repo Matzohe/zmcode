@@ -19,7 +19,7 @@ class LogisticRegression:
         self.loss_fun = nn.CrossEntropyLoss()
         self.softmax = nn.Softmax(dim=-1)
 
-    def sigmoid(self, x):
+    def softmax(self, x):
         return self.softmax(x)
 
     def loss(self, out, label):
@@ -27,7 +27,7 @@ class LogisticRegression:
 
     def forward(self, X):
         output = self.linear(X)
-        return self.sigmoid(output)
+        return self.softmax(output)
 
     def gradient_descent(self, out, y):
         loss = self.loss(out, y)
