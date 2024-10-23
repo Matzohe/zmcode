@@ -48,7 +48,7 @@ class INICfg:
 
 
 # Use to Process INI stile config file
-def INIconfig(config_path: str) -> dataclass:
+def INIconfig(config_path: str = "config.cfg") -> dataclass:
     config_parser = configparser.ConfigParser()
     config_parser.read(config_path)
 
