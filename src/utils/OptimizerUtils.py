@@ -20,6 +20,22 @@ def LARS_adjust_learning_rate(config, optimizer, loader, step):
     optimizer.param_groups[1]['lr'] = lr * float(config.BARLOWTWINS['learning_rate_biases'])
 
 
+def LARS_adjust_learning_rate_normal(config, optimizer, loader, step):
+    max_steps = int(config.MODEL['epoch']) * len(loader)
+    warmup_steps = int(config.MODEL['warmup_epoch']) * len(loader)
+    base_lr = int(config.MODEL['batch_size']) / 256
+    if step < warmup_steps:
+        lr = base_lr * step / warmup_steps
+    else:
+        step -= warmup_steps
+        max_steps -= warmup_steps
+        q = 0.5 * (1 + math.cos(math.pi * step / max_steps))
+        end_lr = base_lr * 0.001
+        lr = base_lr * q + end_lr * (1 - q)
+    optimizer.param_groups[0]['lr'] = lr * float(config.MODEL['learning_rate_weights'])
+    optimizer.param_groups[1]['lr'] = lr * float(config.MODEL['learning_rate_biases'])
+
+
 class LARS(optim.Optimizer):
     def __init__(self, params, lr, weight_decay=0, momentum=0.9, eta=0.001,
                  weight_decay_filter=False, lars_adaptation_filter=False):
