@@ -89,8 +89,6 @@ class ImageNetTrainDataset(Dataset):
         self.root_list, self.label_list = get_train_list(config)
         self.root_list = [os.path.join(self.imagenet_root, x) for x in self.root_list]
 
-        random.shuffle(self.root_list)
-
     def __getitem__(self, index):
         return ImageNetPreProcess(self.root_list[index]).squeeze(0), self.label_list[index]
 
@@ -107,8 +105,6 @@ class ImageNetValDataset(Dataset):
         
         self.root_list, self.label_list = get_val_list(config)
         self.root_list = [os.path.join(self.imagenet_root, x) for x in self.root_list]
-        
-        random.shuffle(self.root_list)
 
     def __getitem__(self, index):
         return ImageNetPreProcess(self.root_list[index]).squeeze(0), self.label_list[index]

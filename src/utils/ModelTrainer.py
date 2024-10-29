@@ -10,7 +10,7 @@ from tqdm import tqdm
 import time
 from .ImagePreporcessUitls import BarlowTwinsTransform
 from .CheckPointUtils import save_checkpoint
-from .OptimizerUtils import LARS_adjust_learning_rate
+from .OptimizerUtils import LARS_adjust_learning_rate, LARS_adjust_learning_rate_normal
 
 def SerialBarlowTwinsModelTrainer(
     config,
@@ -29,7 +29,6 @@ def SerialBarlowTwinsModelTrainer(
 
     before_batch_idx = 0
     before_epoch_idx = 0
-    transform = BarlowTwinsTransform()
     if from_checkpoint:
         try:
             checkpoint = torch.load(checkpoint_path)
@@ -101,12 +100,14 @@ def BasicSupervisedModelTrainer(
     val_dataloader = None,
     summary_writer: Union[SummaryWriter] = None,
     from_checkpoint: bool = False,
-    checkpoint_path: str = None
+    checkpoint_path: str = None,
+    true_batch_size: int = None
 ):
     # This function has a limitation, the model's output should be the same as the label
     # TODO: Change the data structure to fp16 while training.
     epochs = int(config.MODEL['epoch'])
-    
+    before_batch_idx = 0
+    before_epoch_idx = 0
     if from_checkpoint:
         try:
             checkpoint = torch.load(checkpoint_path)
@@ -119,25 +120,53 @@ def BasicSupervisedModelTrainer(
         print("Checkpoint loaded at {}".format(checkpoint_path))
     
     # TODO: Shuffle the training datasets at the start of the epoch, need to change the training logics
-    for epoch in range(epochs):
+    for epoch in range(before_epoch_idx,epochs):
         if from_checkpoint and before_epoch_idx > epoch:
             continue
         start_time = time.perf_counter()
-        for batch_num, (_x, _y) in tqdm(enumerate(train_dataloader), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+        dataloader_batch_size = train_dataloader.batch_size
+        if true_batch_size is None:
+            true_batch_size = int(config.MODEL['batch_size'])
+        else:
+            assert (true_batch_size >= dataloader_batch_size or true_batch_size % dataloader_batch_size == 0)
+            serial_size = true_batch_size // dataloader_batch_size  # use for serial training
+
+
+        all_batch_loss = 0
+        serial_num = 0
+        for batch_num, (_x, _y) in tqdm(enumerate(train_dataloader, start=before_batch_idx), desc=f"Epoch {epoch}", total=len(train_dataloader)):
+            serial_num += 1
             _x = _x.to(config.TRAINING['device'])
             _y = _y.to(config.TRAINING['device'])
-            if from_checkpoint and before_batch_idx > batch_num:
-                continue
             
             output_y = model(_x)
             loss = loss_fn(output_y, _y)
             optimizer.zero_grad()
             loss.backward()
+
+            LARS_adjust_learning_rate(config, optimizer, train_dataloader, batch_num + epoch * len(train_dataloader))
+            all_batch_loss += loss.detach().cpu()
+
+            if serial_num < serial_size:
+                if batch_num == len(train_dataloader) - 1:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    if summary_writer is not None:
+                        summary_writer.add_scalar("Loss", all_batch_loss / serial_num, epoch * len(train_dataloader) + batch_num )
+                    serial_num = 0
+                    all_batch_loss = 0
+                continue
+
             optimizer.step()
+            optimizer.zero_grad()
+
 
             # write training loss to tensorboard
             if summary_writer is not None:
-                summary_writer.add_scalar("Loss", loss, epoch * len(train_dataloader) + batch_num)
+                summary_writer.add_scalar("Loss", all_batch_loss / serial_num, epoch * len(train_dataloader) + batch_num)
+            all_batch_loss = 0
+            serial_num = 0
+
             end_time = time.perf_counter()
 
             # save training check point
@@ -158,6 +187,8 @@ def BasicSupervisedModelTrainer(
                 summary_writer.add_scalar("Accuracy", all_acc / all_num, epoch)
             else:
                 print("Epoch:{}, Accuracy: {}".format(epoch, all_acc / all_num))
+
+        before_batch_idx = 0
 
     # save trained model
     model_state_dict = model.state_dict()
