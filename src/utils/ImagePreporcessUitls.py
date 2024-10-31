@@ -25,6 +25,17 @@ def ClipPreProcess(image_path: str) -> torch.Tensor:
 
     return preprocess(image).unsqueeze(0)
 
+def SegmentPreProcess(image_path: str) -> torch.Tensor:
+    # Segment image preprocess function
+    # The hyperparameters in the Normalize comming from NACLIP:https://github.com/sinahmr/NACLIP.git
+
+    image = Image.open(image_path).convert("RGB")
+    preprocess = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((122.771 / 255., 116.746 / 255., 104.094 / 255.), (68.501 / 255., 66.632 / 255., 70.323 / 255.))
+    ])
+
+    return preprocess(image).unsqueeze(0)
 
 def ImageNetPreProcess(image_path: str) -> torch.Tensor:
     # ImageNet image preprocess function
