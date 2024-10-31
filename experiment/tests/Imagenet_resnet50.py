@@ -15,4 +15,5 @@ def Imagenet_train_resnet50_test():
     optimizer = configure_optimizers(model, config)
     loss_fn = nn.CrossEntropyLoss()
     summary_writer = SummaryWriter()
-    BasicSupervisedModelTrainer(config=config, model=model, train_dataloader=train_dataloader, optimizer=optimizer, loss_fn=loss_fn, summary_writer=summary_writer, val_dataloader=val_dataloader)
+    BasicSupervisedModelTrainer(config=config, model=model, train_dataloader=train_dataloader, optimizer=optimizer, 
+                                loss_fn=loss_fn, summary_writer=summary_writer, val_dataloader=val_dataloader, true_batch_size=int(config.MODEL['batch_size']))
