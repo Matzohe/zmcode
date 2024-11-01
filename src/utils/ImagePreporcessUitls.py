@@ -23,7 +23,9 @@ def ClipPreProcess(image_path: str) -> torch.Tensor:
         transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
     ])
 
-    return preprocess(image).unsqueeze(0)
+    img = preprocess(image).unsqueeze(0)
+    img = img[:, [2, 1, 0], :, :]
+    return img
 
 def SegmentPreProcess(image_path: str) -> torch.Tensor:
     # Segment image preprocess function

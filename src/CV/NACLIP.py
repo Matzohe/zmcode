@@ -2,6 +2,7 @@ from ..MultiModal import NACLIP as clip
 from ..utils.pamr import PAMR
 from ..utils.NACLIPPrompts.imagenet_template import openai_imagenet_template
 import logging
+from mmengine.structures import PixelData
 from typing import List, Union, Tuple
 import torch
 import torch.nn as nn
@@ -18,7 +19,7 @@ class NACLIP(nn.Module):
         self.model.visual.set_params(arch=config.NACLIP['arch'], 
                                      attn_strategy=config.NACLIP['attn_strategy'], 
                                      gaussian_std=float(config.NACLIP['gaussian_std']))
-        self.pamr = PAMR(num_iter=int(config.NACLIP['pamr_steps']), dilations=config.NACLIP['pamr_stride'])
+        self.pamr = PAMR(num_iter=int(config.NACLIP['pamr_steps']), dilations=eval(config.NACLIP['pamr_stride']))
         self.logit_scale = int(config.NACLIP['logit_scale'])
         self.prob_thd = float(config.NACLIP['prob_thd'])
         self.slide_stride = int(config.NACLIP['slide_stride'])
@@ -65,7 +66,7 @@ class NACLIP(nn.Module):
 
         if labels is None:
             labels = ['background', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
-                 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
+                 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'fish', 'cat', 'dog', 'horse',
                  'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
                  'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
                  'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon',
@@ -179,7 +180,11 @@ class NACLIP(nn.Module):
         if self.pamr:
             img = nn.functional.interpolate(inputs, size=img_size, mode='bilinear', align_corners=self.align_corners)
             try:
-                seg_logits = self.pamr(img, seg_logits.to(img.dtype)).to(self.dtype)
+                new_img = img.to(device="cpu")
+                original_dtype = seg_logits.dtype
+                new_seg_logits = seg_logits.to(device="cpu")
+                seg_logits = self.pamr(new_img, new_seg_logits.to(img.dtype)).to(original_dtype)
+                seg_logits.to(device=self.device)
             except RuntimeError as e:
                 logging.warning(f"Couldn't apply PAMR for image {batch_img_metas[0]['img_path'].split('/')[-1]} "
                                 f"of size {img_size}, probably due to low memory. Error message: \"{str(e)}\"")
@@ -189,7 +194,7 @@ class NACLIP(nn.Module):
     def postprocess_result(self, seg_logits, data_samples):
         batch_size = seg_logits.shape[0]
         if data_samples is None:
-            data_samples = []
+            data_samples = [{} for _ in range(batch_size)]
         for i in range(batch_size):
             seg_probs = torch.softmax(seg_logits[i] * self.logit_scale, dim=0)  # n_queries * w * h
 
@@ -204,5 +209,7 @@ class NACLIP(nn.Module):
             seg_pred[seg_probs.max(0, keepdim=True)[0] < self.prob_thd] = 0
             seg_probs /= seg_probs.sum(0, keepdim=True)
 
-            data_samples.append((seg_pred, seg_probs))
-        return data_samples
+
+            data_samples[i]['seg_logits'] = seg_probs
+            data_samples[i]['pred_sem_seg'] = seg_pred
+        return seg_logits, data_samples

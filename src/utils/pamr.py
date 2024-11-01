@@ -44,7 +44,7 @@ class LocalAffinity(nn.Module):
 
         x_aff = torch.empty((K * B, len(self.dilations) * self.kernel.size(0), H, W), device=x.device)
         for i, d in enumerate(self.dilations):
-            x_pad = F.pad(x, [d] * 4, mode='replicate')
+            x_pad = F.pad(x, [int(d)] * 4, mode='replicate')
             x_aff[:, self.kernel.size(0) * i:(i + 1) * self.kernel.size(0), :, :] = F.conv2d(x_pad, self.kernel,
                                                                                              dilation=d)
         return x_aff.view(B, K, -1, H, W)
