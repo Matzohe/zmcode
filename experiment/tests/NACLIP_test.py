@@ -1,6 +1,7 @@
 from src.CV.NACLIP import NACLIP
 from src.utils.utils import INIconfig
 from src.utils.ImagePreporcessUitls import SegmentPreProcess
+from src.utils.Drawer.NACLIPDrawer import NACLIP_Drawer
 from PIL import Image
 import torch
 import numpy as np
@@ -14,6 +15,6 @@ def NACLIP_test():
     img = img.to(device)
     with torch.no_grad():
         model = NACLIP(config)
-        output, output2 = model.predict(img)
-    torch.save(output, "info.pt")
-    torch.save(output2, "another_info.pt")
+        output = model.predict(img)
+    NACLIP_Drawer(output)
+

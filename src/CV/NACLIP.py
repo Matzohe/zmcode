@@ -180,6 +180,7 @@ class NACLIP(nn.Module):
         if self.pamr:
             img = nn.functional.interpolate(inputs, size=img_size, mode='bilinear', align_corners=self.align_corners)
             try:
+                # This step will consume a huge number of Memory when processing large Image, so here we use cpu
                 new_img = img.to(device="cpu")
                 original_dtype = seg_logits.dtype
                 new_seg_logits = seg_logits.to(device="cpu")
@@ -212,4 +213,5 @@ class NACLIP(nn.Module):
 
             data_samples[i]['seg_logits'] = seg_probs
             data_samples[i]['pred_sem_seg'] = seg_pred
-        return seg_logits, data_samples
+        
+        return data_samples
