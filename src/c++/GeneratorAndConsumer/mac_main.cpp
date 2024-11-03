@@ -20,7 +20,7 @@ queue<string> buffer;  // 缓冲池
 void* producer(void* arg) {
     int id = *(int*)arg;
     for (int i = 0; i < 12; i++) {
-        sleep(rand() % 100); // 随机等待时间
+        sleep(rand() % 10); // 随机等待时间
         string data = "Data_" + to_string(id) + "_" + to_string(i);
 
         pthread_mutex_lock(&_mutex); // 加锁
@@ -41,7 +41,7 @@ void* producer(void* arg) {
 void* consumer(void* arg) {
     int id = *(int*)arg;
     for (int i = 0; i < 8; i++) {
-        sleep(rand() % 100); // 随机等待时间
+        sleep(rand() % 10); // 随机等待时间
 
         pthread_mutex_lock(&_mutex); // 加锁
 

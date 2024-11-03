@@ -116,3 +116,21 @@ class BarlowTwinsTransform:
         y1 = self.transform(x)
         y2 = self.transform_prime(x)
         return y1, y2
+    
+
+class BrainSAILTransform:
+    def __init__(self, config):
+
+        self.config = config
+        self.transform_number = int(config.BRAINSAIL['transform_number'])
+        self.y_threashould = float(config.BRAINSAIL['y_threashould'])
+        self.x_threashould = float(config.BRAINSAIL['x_threashould'])
+        self.transform_list = [
+            transforms.Compose([transforms.Lambda(lambda crop: transforms.functional.affine(crop, 
+                                                                                            angle=0, 
+                                                                                            translate=(int(crop.shape[-1] * x_rate), int(crop.shape[-2] * y_rate)), 
+                                                                                            scale=1, 
+                                                                                            shear=0))]) 
+                                                                                            for x_rate, y_rate in zip(self.x_rate_list, self.y_rate_list)
+        ]
+        self.anti_transform_list = []
