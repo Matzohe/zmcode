@@ -118,6 +118,7 @@ class BarlowTwinsTransform:
         return y1, y2
     
 
+# TODO: Need to fill the Transform Code
 class BrainSAILTransform:
     def __init__(self, config):
 
@@ -134,3 +135,16 @@ class BrainSAILTransform:
                                                                                             for x_rate, y_rate in zip(self.x_rate_list, self.y_rate_list)
         ]
         self.anti_transform_list = []
+
+    # print(new_image.shape)
+    # # 定义平移变换，假设你想水平和垂直方向上都平移10个像素
+    # transform = transforms.Compose([
+    #     transforms.RandomAffine(degrees=0, translate=(0.2, 0)),  # 10%的平移
+    # ])
+
+    # # 应用变换
+    # transformed_image = transform(image)
+
+    # # 显示原图和变换后的图像
+    # image.show()
+    # transformed_image.show()
