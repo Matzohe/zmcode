@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 UMAPCOLORLIST = torch.tensor([[0, 255, 0], [0, 0, 255], [255, 255, 0], [255, 0, 255], [255, 0, 0]], dtype=torch.float32) / 255. # green, blue, yellow, magenta
 
 
-def UMAPProcess(data, n_neighbors=150, min_dist=0.1, n_components=2, random_seed=42):
+def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=42):
     """
     UMAPProcess
 
@@ -25,7 +25,7 @@ def UMAPProcess(data, n_neighbors=150, min_dist=0.1, n_components=2, random_seed
     original_device = data.device
     data = data.to('cpu').numpy() 
 
-    reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, random_state=random_seed, n_jobs=4)
+    reducer = umap.UMAP(n_neighbors=n_neighbors, metric='cosine', min_dist=min_dist, n_components=n_components, random_state=random_seed, n_jobs=4)
     
     low_dimensional_data = reducer.fit_transform(data)
     low_dimensional_data = torch.from_numpy(low_dimensional_data).to(original_device)
@@ -33,7 +33,7 @@ def UMAPProcess(data, n_neighbors=150, min_dist=0.1, n_components=2, random_seed
     return low_dimensional_data
 
 
-def UMAPVisualize(data, n_neighbors=150, min_dist=0.1, n_components=2, random_seed=42, 
+def UMAPVisualize(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=42, 
                   show=False, save=False, save_path=None):
 
     """

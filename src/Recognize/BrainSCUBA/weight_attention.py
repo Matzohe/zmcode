@@ -13,12 +13,13 @@ def WeightTransform(image_embedding, voxel_weight, temperature=1/150):
     """
 
     assert image_embedding.shape[1] == voxel_weight.shape[1] and voxel_weight.ndim == 2, "the shape of image_embedding and voxel_weight is not correct"
-
-    middle_matrix = voxel_weight @ image_embedding.T / temperature
-    score = torch.softmax(middle_matrix, dim=1)
-
+    
     # compute the L2 norm of the image embedding, and the image embedding divided by the L2 norm
     avg_embedding = torch.norm(image_embedding, dim=1, p=2).view(image_embedding.shape[0], 1)
+    avg_weight = torch.norm(voxel_weight, dim=1, p=2).view(voxel_weight.shape[0], 1)
+    middle_matrix = (voxel_weight / avg_weight) @ (image_embedding / avg_embedding).T / temperature
+    score = torch.softmax(middle_matrix, dim=1)
+    
     direct_vector = image_embedding / avg_embedding
 
     output = (score @ avg_embedding) * (score @ direct_vector)
