@@ -23,6 +23,7 @@ class NSDDataset:
         self.beta_value_root = config.NSD['beta_value_root']
 
         self.image_index_save_root = config.NSD['image_index_save_root']
+        self.image_root_save_root = config.NSD['image_root_save_root']
         self.image_trail_save_path = config.NSD['image_trail_save_root']
         self.roi_mask_save_root = config.NSD['roi_mask_save_root']
         self.general_mask_save_root = config.NSD['general_mask_save_root']
@@ -53,6 +54,24 @@ class NSDDataset:
 
         return image_index_list
     
+    def extract_image_root(self,
+                           subj: int,
+                           save = False,
+                           ) -> List[str]:
+        
+        stim_info = pd.read_pickle(self.stimuli_info)
+        key = "subject{}_rep0".format(subj)
+        image_root_list = list(stim_info.cocoSplit[stim_info[key] != 0])
+        image_index_list = list(stim_info.cocoId[stim_info[key] != 0])
+        image_root_list = ["/".join(i, "{:012}.jpg".format(j)) for i, j in zip(image_root_list, image_index_list)]
+        if save:
+            save_path = self.image_root_save_root.format(subj)
+            check_path(save_path)
+            torch.save(image_root_list, save_path)
+        
+        return image_root_list
+
+
     # Get the NSD dataset stimulate infomation, the trail index (10000 * 3) for each subject, each row is in commone with the image index list
     def extract_trail_index(self, 
                             subj: int, 
@@ -204,7 +223,7 @@ class NSDDataset:
             repo_data_list = []
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
-            repo_data_list = torch.tensor(repo_data_list, dim=0).T
+            repo_data_list = torch.tensor(repo_data_list).T
 
             average_voxal_activation[:, v] = torch.mean(repo_data_list, dim=1)
 
