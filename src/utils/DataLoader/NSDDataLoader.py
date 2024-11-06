@@ -62,11 +62,11 @@ class NSDDataset:
         # each image has 3 trails, finally we will get 10000 * 3 trails
 
         stim_info = pd.read_pickle(self.stimuli_info)
-        key = "subject{}_rep{}"
+        key = "subject%d_rep%01d"
         trail_index = []
         for i in range(self.repo):
-            select_info = key.format(subj, i)
-            trail_index.append(list(stim_info[select_info][stim_info[select_info]] != 0))
+            select_info = key % (subj, i)
+            trail_index.append(list(stim_info[select_info][stim_info[select_info] != 0]))
         trail_index = np.array(trail_index).T - 1  # Turn to shape [10000, 3], and change from 1 based to 0 based
 
         if save:
