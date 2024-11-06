@@ -23,7 +23,8 @@ def fMRI_guide_weight_test(config_root="config/brainGuide_config.cfg"):
     coco_root = config.DATASET['coco']
     image_root_list = [os.path.join(coco_root, each) for each in image_root_list]
 
-    voxel_activation = torch.load(config.NSD['zscore_avg_activation_save_root'])
+    save_name_list = eval(config.BRAIN['save_name_list'])
+    voxel_activation = torch.load(config.NSD['zscore_avg_activation_save_root'].format(subj, save_name_list[0]))
 
     weight = voxel_representation(weight, voxel_activation)[0]
 
