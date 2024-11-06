@@ -46,8 +46,10 @@ def Two_Dim_UMAP_tests():
 def Three_Dim_UMAP_tests():
     config = INIconfig()
 
-    weight_root = config.BRAINDIVE['weight_root']
-    weight = torch.from_numpy(np.load(weight_root)).T
+    # weight_root = config.BRAINDIVE['weight_root']
+    # weight = torch.from_numpy(np.load(weight_root)).T
+    weight_root = "/Users/a1/PythonProgram/zmcode/testDataset/BrainSCUBA/adapted_weight/adapted_weight.pt"
+    weight = torch.load(weight_root)
 
     roi_root = config.BRAINDIVE['roi_root']
     roi_list = eval(config.BRAINDIVE['roi_list'])
