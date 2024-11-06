@@ -35,4 +35,5 @@ def BrainSCUBA_Weight_Transform_test():
     ax.set_xlabel('UMAP1')
     ax.set_ylabel('UMAP2')
     plt.show()
-    metric='cosine'
+    
+    torch.save(adapted_weight, 'adapted_weight.pt')
