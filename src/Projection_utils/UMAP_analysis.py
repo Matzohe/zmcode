@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 UMAPCOLORLIST = torch.tensor([[0, 255, 0], [0, 0, 255], [255, 255, 0], [255, 0, 255], [255, 0, 0]], dtype=torch.float32) / 255. # green, blue, yellow, magenta
 
 
-def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=42):
+def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2):
     """
     UMAPProcess
 
@@ -15,7 +15,6 @@ def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=
     - n_neighbors: the number of neighbors to consider for UMAP
     - min_dist: the min distance between two samples for UMAP
     - n_components: dimention after UMAP projection
-    - random_seed: random seed, default for 42
 
     returns:
     - low_dimensional_data: torch.tensor, shape (n_samples, n_components)
@@ -25,7 +24,7 @@ def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=
     original_device = data.device
     data = data.to('cpu').numpy() 
 
-    reducer = umap.UMAP(n_neighbors=n_neighbors, metric='cosine', min_dist=min_dist, n_components=n_components, random_state=random_seed, n_jobs=4)
+    reducer = umap.UMAP(n_neighbors=n_neighbors, metric='cosine', min_dist=min_dist, n_components=n_components, n_jobs=-1)
     
     low_dimensional_data = reducer.fit_transform(data)
     low_dimensional_data = torch.from_numpy(low_dimensional_data).to(original_device)
@@ -33,7 +32,7 @@ def UMAPProcess(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=
     return low_dimensional_data
 
 
-def UMAPVisualize(data, n_neighbors=15, min_dist=0.1, n_components=2, random_seed=42, 
+def UMAPVisualize(data, n_neighbors=15, min_dist=0.1, n_components=2, 
                   show=False, save=False, save_path=None):
 
     """
@@ -45,7 +44,6 @@ def UMAPVisualize(data, n_neighbors=15, min_dist=0.1, n_components=2, random_see
     - n_neighbors: the number of neighbors to consider for UMAP 
     - min_dist: the min distance between two samples for UMAP
     - n_components: dimention after UMAP projection
-    - random_seed: random seed, default for 42
     - show: whether to show the plot
     - save: whether to save the plot
     - save_path: the path to save the plot
@@ -57,7 +55,7 @@ def UMAPVisualize(data, n_neighbors=15, min_dist=0.1, n_components=2, random_see
 
     assert n_components <= 5, "Too much components not support this visualize function, this visualiize function only support 4 components"
 
-    low_dimensional_data = UMAPProcess(data, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, random_seed=random_seed)
+    low_dimensional_data = UMAPProcess(data, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
     low_dimensional_data = low_dimensional_data.detach().cpu()
 
     # translate the UMAP value to colors
