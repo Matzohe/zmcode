@@ -63,7 +63,7 @@ class NSDDataset:
         key = "subject{}_rep0".format(subj)
         image_root_list = list(stim_info.cocoSplit[stim_info[key] != 0])
         image_index_list = list(stim_info.cocoId[stim_info[key] != 0])
-        image_root_list = ["/".join(i, "{:012}.jpg".format(j)) for i, j in zip(image_root_list, image_index_list)]
+        image_root_list = ["/".join([i, "{:012}.jpg".format(j)]) for i, j in zip(image_root_list, image_index_list)]
         if save:
             save_path = self.image_root_save_root.format(subj)
             check_path(save_path)

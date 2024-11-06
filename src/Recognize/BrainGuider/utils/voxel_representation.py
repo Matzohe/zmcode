@@ -14,4 +14,8 @@ def voxel_representation(voxel_weight, voxel_activation):
     """
     assert voxel_activation.shape[-1] == voxel_weight.shape[0]
 
-    return voxel_weight * voxel_activation.view(-1, 1)
+    voxel_activation = voxel_activation.unsqueeze(-1)
+
+    voxel_weight = voxel_weight.unsqueeze(0)
+
+    return voxel_activation * voxel_weight
