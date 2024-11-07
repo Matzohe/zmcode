@@ -2,7 +2,6 @@ from ..MultiModal import NACLIP as clip
 from ..utils.pamr import PAMR
 from ..utils.NACLIPPrompts.imagenet_template import openai_imagenet_template
 import logging
-from mmengine.structures import PixelData
 from typing import List, Union, Tuple
 import torch
 import torch.nn as nn
