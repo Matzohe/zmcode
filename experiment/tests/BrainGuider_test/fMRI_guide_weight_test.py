@@ -40,8 +40,8 @@ def fMRI_guide_weight_test(config_root="config/brainGuide_config.cfg"):
     save_name_list = eval(config.BRAIN['save_name_list'])
     voxel_activation = torch.load(config.NSD['zscore_avg_activation_save_root'].format(subj, save_name_list[0]))
     voxel_activation = voxel_activation / torch.norm(voxel_activation, dim=1, keepdim=True)
+    all_weight = voxel_representation(weight, voxel_activation)
     for img_idx in tqdm(range(10000), total=10000):
-        all_weight = voxel_representation(weight, voxel_activation)
         weight = all_weight[img_idx]
         ranged_weight = []
         label_index_place = []
