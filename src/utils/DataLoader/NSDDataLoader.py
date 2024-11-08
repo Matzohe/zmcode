@@ -54,6 +54,25 @@ class NSDDataset:
 
         return image_index_list
     
+    def load_image_index(self,
+                         subj: int
+                         ) -> List[int]:
+        """_summary_
+
+        Args:
+            subj (int): which target subject, if haven't extracted image index, it will extract
+
+        Returns:
+            List[int]: target subj's image index list
+        """
+        save_path = self.image_index_save_root.format(subj)
+        try:
+            image_index_list = torch.load(save_path)
+        except:
+            print("extracting image index")
+            image_index_list = self.extract_image_index(subj=subj, save=True)
+        return image_index_list
+
     def extract_image_root(self,
                            subj: int,
                            save = False,
@@ -71,6 +90,16 @@ class NSDDataset:
         
         return image_root_list
 
+    def load_image_root(self,
+                        subj: int,
+                        ) -> List[str]:
+        save_path = self.image_root_save_root.format(subj)
+        try:
+            image_root_list = torch.load(save_path)
+        except:
+            print("extracting image root")
+            image_root_list = self.extract_image_root(subj=subj, save=True)
+        return image_root_list
 
     # Get the NSD dataset stimulate infomation, the trail index (10000 * 3) for each subject, each row is in commone with the image index list
     def extract_trail_index(self, 
@@ -95,6 +124,17 @@ class NSDDataset:
 
         return trail_index
 
+    def load_trail_index(self,
+                         subj: int
+                         ) -> np.ndarray:
+        save_path = self.image_trail_save_path.format(subj)
+        try:
+            trail_index = torch.load(save_path)
+        except:
+            print("extracting trail index")
+            trail_index = self.extract_trail_index(subj=subj, save=True)
+        return trail_index
+    
     # Get the ROI mask for a certain subject, if roi is none, get the general mask for the subject
     def extract_roi_mask(self, 
                          subj: int, 
@@ -136,6 +176,18 @@ class NSDDataset:
                 torch.save(new_roi_mask, cortical_path)
 
             return new_roi_mask
+
+    def load_roi_mask(self,
+                      subj: int,
+                      roi_name: str = ""
+                      ) -> np.ndarray:
+        save_path = self.roi_mask_save_root.format(subj, roi_name)
+        try:
+            mask = torch.load(save_path)
+        except:
+            print("extracting roi mask")
+            mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
+        return mask
 
     # Get the voxal response for a certain subject, get voxal responses for the subj and the target roi, for all 40 sessions
     # meanwhile, choose to process zscore process
@@ -197,6 +249,21 @@ class NSDDataset:
 
         return cortical_beta_mat
 
+    def load_voxal_activation(self,
+                              subj: int,
+                              roi_name: str = "",
+                              zscored: bool = True,
+                              ) -> torch.Tensor:
+        if zscored:
+            response_root = self.voxal_zscore_response_save_root.format(subj, roi_name)
+        else:
+            response_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
+        try:
+            response_data = torch.load(response_root)
+        except:
+            print("extracting voxal activation")
+            response_data = self.extract_voxal_activation(subj=subj, roi_name=roi_name, save=True, zscore=zscored)
+        return response_data
 
 # compute an average voxal activation for three time repeate images
     def compute_ev(self,
@@ -244,7 +311,23 @@ class NSDDataset:
             torch.save(ev_list, ev_avtivation_save_path)
         
         return ev_list
-        
+    
+    def load_ev_value(self,
+                      subj: int,
+                      roi_name: str = "",
+                      zscored: bool = True
+                      ) -> torch.Tensor:
+        if zscored:
+            ev_root = self.zscore_activation_ev_save_root.format(subj, roi_name)
+        else:
+            ev_root = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
+        try:
+            ev = torch.load(ev_root)
+        except:
+            print("extracting activation ev")
+            ev = self.compute_ev(subj=subj, roi_name=roi_name, zscored=zscored, save=True)
+        return ev
+
     def get_pure_activation(self,
                             subj: int,
                             roi_name: str = "",
