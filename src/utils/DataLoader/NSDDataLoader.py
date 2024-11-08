@@ -394,7 +394,7 @@ class NSDDataset:
 # ==================================================================
 
 
-    def extract_individual_and_same_image_index(self,
+    def extract_individual_and_same_image_bool(self,
                                        subj: int,
                                        save = False,
                                        ) -> List[int]:
@@ -424,4 +424,16 @@ class NSDDataset:
             torch.save(individual_bool_list, individual_save_root)
             torch.save(same_bool_list, same_save_root)
 
+        return individual_bool_list, same_bool_list
+    
+    def load_individual_and_same_image_bool(self, 
+                                             subj: int
+                                             ) -> List[int]:
+        try:
+            individual_bool_list = torch.load(self.individual_image_bool_save_root.format(subj))
+            same_bool_list = torch.load(self.same_image_bool_save_root.format(subj))
+        except:
+            print("extracting image bool list")
+            individual_bool_list, same_bool_list = self.extract_individual_and_same_image_bool(subj, save=True)
+        
         return individual_bool_list, same_bool_list
