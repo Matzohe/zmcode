@@ -310,7 +310,7 @@ class NSDDataset:
             torch.save(average_voxal_activation, avg_avtivation_save_path)
             torch.save(ev_list, ev_avtivation_save_path)
         
-        return ev_list
+        return ev_list, average_voxal_activation
     
     def load_ev_value(self,
                       subj: int,
@@ -319,14 +319,33 @@ class NSDDataset:
                       ) -> torch.Tensor:
         if zscored:
             ev_root = self.zscore_activation_ev_save_root.format(subj, roi_name)
+            avg_activation_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
         else:
             ev_root = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
+            avg_activation_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
         try:
             ev = torch.load(ev_root)
         except:
             print("extracting activation ev")
-            ev = self.compute_ev(subj=subj, roi_name=roi_name, zscored=zscored, save=True)
+            ev, _ = self.compute_ev(subj=subj, roi_name=roi_name, zscored=zscored, save=True)
         return ev
+
+    def load_avg_activation_value(self,
+                      subj: int,
+                      roi_name: str = "",
+                      zscored: bool = True
+                      ) -> torch.Tensor:
+        if zscored:
+            avg_activation_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
+        else:
+            avg_activation_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
+        try:
+            avg_activation = torch.load(avg_activation_root)
+        except:
+            print("extracting activation ev")
+            _, avg_activation = self.compute_ev(subj=subj, roi_name=roi_name, zscored=zscored, save=True)
+        return avg_activation
+
 
     def get_pure_activation(self,
                             subj: int,
