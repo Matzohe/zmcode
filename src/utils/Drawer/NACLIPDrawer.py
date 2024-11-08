@@ -60,23 +60,23 @@ def NACLIP_Drawer(data_samples, specific_target_index=None,
             assert len(heatmap_save_path) == fig_number, "heatmap save path's length should be equal to fig number"
 
     for i in range(fig_number):
-        pred_sem_seg = data_samples[i]['pred_sem_seg']
+        pred_sem_seg = data_samples[i]['pred_sem_seg'][0]
         seg_logits = data_samples[i]['seg_logits']
 
-        output_image = torch.zeros(size=(pred_sem_seg.shape[-2], pred_sem_seg.shape[-1], 3))
+        output_image = torch.zeros(size=(pred_sem_seg.shape[-2], pred_sem_seg.shape[-2], 3))
         for j in tqdm(range(pred_sem_seg.shape[-2]), total=pred_sem_seg.shape[-1], desc="processing Image {}".format(i)):
             for k in range(pred_sem_seg.shape[1]):
-                output_image[i, j] = torch.tensor(default_color_list[pred_sem_seg[j, k]])
+                output_image[j, k] = torch.tensor(default_color_list[pred_sem_seg[j, k]])
         
-        image = image.numpy().astype(np.uint8)
+        image = output_image.numpy().astype(np.uint8)
         if save:
             save_root = seg_save_path[i]
             image = Image.fromarray(image)
             image.save(save_root)
         else:
-            plt.figure(12, 12)
+            plt.figure(figsize=(12, 12))
             plt.imshow(image)
-            plt.plot()
+            plt.show()
             plt.close()
         
         if specific_target_index is not None:
@@ -88,7 +88,7 @@ def NACLIP_Drawer(data_samples, specific_target_index=None,
                 plt.savefig(save_root)
                 plt.close()
             else:
-                plt.plot()
+                plt.show()
                 plt.close()
 
             
