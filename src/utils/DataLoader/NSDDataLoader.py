@@ -5,6 +5,7 @@ import nibabel as nib
 from typing import List, Optional, Union
 from tqdm import tqdm
 import pandas as pd
+import os
 from .utils.NSD_utils import zscore_by_run, ev
 from ..utils import check_path, check_tensor
 
@@ -25,6 +26,10 @@ class NSDDataset:
         self.image_index_save_root = config.NSD['image_index_save_root']
         self.image_root_save_root = config.NSD['image_root_save_root']
         self.image_trail_save_path = config.NSD['image_trail_save_root']
+
+        self.individual_image_bool_save_root = config.NSD['individual_image_bool_save_root']
+        self.same_image_bool_save_root = config.NSD['same_image_bool_save_root']
+
         self.roi_mask_save_root = config.NSD['roi_mask_save_root']
         self.general_mask_save_root = config.NSD['general_mask_save_root']
         self.voxal_zscore_response_save_root = config.NSD['voxal_zscore_response_save_root']
@@ -53,6 +58,7 @@ class NSDDataset:
             torch.save(image_index_list, save_path)
 
         return image_index_list
+
     
     def load_image_index(self,
                          subj: int
@@ -319,10 +325,8 @@ class NSDDataset:
                       ) -> torch.Tensor:
         if zscored:
             ev_root = self.zscore_activation_ev_save_root.format(subj, roi_name)
-            avg_activation_root = self.zscore_avg_activation_save_root.format(subj, roi_name)
         else:
             ev_root = self.nonzscore_activation_ev_save_root.format(subj, roi_name)
-            avg_activation_root = self.nonzscore_avg_activation_save_root.format(subj, roi_name)
         try:
             ev = torch.load(ev_root)
         except:
@@ -383,3 +387,41 @@ class NSDDataset:
             torch.save(pure_list, pure_response_save_path)
 
         return pure_list
+
+# ==================================================================
+# extract individual and same activation, image index and image root
+# It's a list of Boolean
+# ==================================================================
+
+
+    def extract_individual_and_same_image_index(self,
+                                       subj: int,
+                                       save = False,
+                                       ) -> List[int]:
+        
+        individual_bool_list = torch.zeros(size=(10000,), dtype=torch.bool)
+        same_bool_list = torch.zeros(size=(10000,), dtype=torch.bool)
+        stim_info = pd.read_pickle(self.stimuli_info)
+        key_0 = "subject{}_rep0".format(subj)
+        key_1 = "subject{}_rep0".format(subj % 8 + 1)
+        
+        num = 0
+        individual_list = list(map(lambda x, y: x & y, stim_info[key_0] != 0, stim_info[key_1] == 0))
+        same_list = list(map(lambda x, y: x & y, stim_info[key_0] != 0, stim_info[key_1] != 0))
+        for i in range(len(individual_list)):
+            if individual_list[i]:
+                if same_list[i]:
+                    same_bool_list[num] = True
+                else:
+                    individual_bool_list[num] = True
+                num += 1
+
+        if save:
+            individual_save_root = self.individual_image_bool_save_root.format(subj)
+            same_save_root = self.same_image_bool_save_root.format(subj)
+            check_path(individual_save_root)
+            check_path(same_save_root)
+            torch.save(individual_bool_list, individual_save_root)
+            torch.save(same_bool_list, same_save_root)
+
+        return individual_bool_list, same_bool_list
