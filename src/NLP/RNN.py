@@ -7,6 +7,7 @@ from src.utils.DataLoader.book_corpus import BookCorpusDataset
 from src.utils.utils import INIconfig, set_seed
 from src.utils.DataLoader.book_corpus import get_book_corpus_dataloader
 from tqdm import tqdm
+from src.NLP.tokenizer.one_hot import OneHot
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -33,23 +34,25 @@ class RNN(nn.Module):
     def __init__(self, config):
         super(RNN, self).__init__()
         self.input_size = int(config.RNN['input_size']) 
+        self.vocab_size = int(config.RNN['vocab_size'])
         self.hidden_size = int(config.RNN['hidden_size'])
         self.output_size = int(config.RNN['output_size'])
         self.layers = int(config.RNN['layers'])
         self.device = config.TRAINING['device']
         state_dict = torch.load("embedding_weight.pt")
-        self.token_embedding = nn.Embedding(self.input_size, 512)
-        self.token_embedding.load_state_dict(state_dict)
+        self.token_embedding = nn.Embedding(self.vocab_size, self.input_size)
         self.token_embedding.weight.requires_grad_(False)
-        self.predict = nn.Linear(self.hidden_size, self.output_size, bias=False)
+        self.predict = nn.Linear(self.output_size, self.vocab_size, bias=False)
         # share the weight
         self.predict.weight = self.token_embedding.weight
 
         self.model = nn.ModuleList([
-            rnn_block(512, self.hidden_size, 512) for _ in range(self.layers)])
+            rnn_block(self.input_size, self.hidden_size, self.output_size) for _ in range(self.layers)])
         self.model = nn.Sequential(*self.model)
 
+
     def forward(self, x):
+
         x = self.token_embedding(x)
         h = torch.zeros(size=(x.shape[0], self.layers, self.hidden_size)).to(self.device)
 
@@ -130,20 +133,56 @@ def rnn_training():
     dataloader = get_book_corpus_dataloader(config)
 
     model = model.to(config.TRAINING['device'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(config.TRAINING['lr']), weight_decay=float(config.TRAINING['weight_decay']))
-
-    for epoch in range(int(config.TRAINING['epoch'])):
+    lr = float(config.TRAINING['lr'])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=float(config.TRAINING['weight_decay']))
+    epochs = int(config.TRAINING['epoch'])
+    for epoch in range(epochs):
 
         for idx, (x, y) in tqdm(enumerate(dataloader), total=len(dataloader)):
+            
+            if epoch <= 4:
+                lr = lr * (idx + epoch * len(dataloader) + 1) / len(dataloader) / 5
+            else:
+                lr = lr * (1 + torch.cos(torch.pi * torch.tensor((len(dataloader) * (epoch - 1) + idx) / 1.2 / (len(dataloader) - 1) / epochs))) / 2
+
             x = x.to(config.TRAINING['device'])
             y = y.to(config.TRAINING['device'])
 
             output = model(x)
             loss = loss_function(output.permute(0, 2, 1), y)
 
-            summary_writer.add_scalar("loss", loss.detach().cpu(), idx)
+            summary_writer.add_scalar("loss", loss.detach().cpu(), idx + epoch * len(dataloader))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        torch.save(model.state_dict(), "experiment/output/RNN/output_model.pt")
     
     
+def rnn_test():
+    config = INIconfig("config/rnn_config.cfg")
+    model = RNN(config)
+    model.load_state_dict(torch.load("experiment/output/RNN/output_model.pt"))
+    model = model.to(config.TRAINING['device'])
+    model.eval()
+    tokenizer = OneHot()
+    dataloader = get_book_corpus_dataloader(config)
+    for idx, (x, y) in enumerate(dataloader):
+        h = torch.zeros(size=(model.layers, 1, model.output_size)).to(model.device)
+        token_x = x.to(config.TRAINING['device'])[10][:5].view(1, -1)
+        test_x = model.token_embedding(token_x)
+        for i in range(20):
+            output, _ = model.rnn_model(test_x)
+            output = torch.argmax(output, dim=-1)[:, -1]
+            token_x = torch.concat([token_x, output.unsqueeze(0)], dim=-1)
+            test_x = model.token_embedding(token_x)
+
+        print(tokenizer.decode(token_x[0].tolist()))
+        if idx <= 10:
+            continue
+        else:
+            break
+
+        
+
+            
