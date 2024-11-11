@@ -32,22 +32,21 @@ class rnn_block(nn.Module):
 class RNN(nn.Module):
     def __init__(self, config):
         super(RNN, self).__init__()
-        self.input_size = int(config.RNN['input_size'])
+        self.input_size = int(config.RNN['input_size']) 
         self.hidden_size = int(config.RNN['hidden_size'])
         self.output_size = int(config.RNN['output_size'])
         self.layers = int(config.RNN['layers'])
         self.device = config.TRAINING['device']
         state_dict = torch.load("embedding_weight.pt")
-        self.token_embedding = nn.Embedding(self.input_size, self.hidden_size)
+        self.token_embedding = nn.Embedding(self.input_size, 512)
         self.token_embedding.load_state_dict(state_dict)
-        self.token_embedding.requires_grad_(False)
+        self.token_embedding.weight.requires_grad_(False)
         self.predict = nn.Linear(self.hidden_size, self.output_size, bias=False)
         # share the weight
         self.predict.weight = self.token_embedding.weight
-        self.predict.weight.requires_grad_(False)
 
         self.model = nn.ModuleList([
-            rnn_block(self.hidden_size, self.hidden_size, self.hidden_size) for _ in range(self.layers)])
+            rnn_block(512, self.hidden_size, 512) for _ in range(self.layers)])
         self.model = nn.Sequential(*self.model)
 
     def forward(self, x):
