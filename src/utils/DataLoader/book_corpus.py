@@ -1,7 +1,7 @@
 import pyarrow.parquet as pq
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
-from src.MultiModal.clip import tokenize
+
 import src.MultiModal.clip as clip
 
 
@@ -10,12 +10,11 @@ class BookCorpusDataset(Dataset):
         self.config = config
         self.book_corpus_root = config.DATASET["book_corpus_root"].format(index)
         self.data = pq.ParquetDataset(self.book_corpus_root).read().to_pydict()["text"]
-        self.tokenizer = tokenize
+
 
 
     def __getitem__(self, index):
-        tokenized_text = self.tokenizer(self.data[index]).squeeze(0)
-        return tokenized_text[: -1], tokenized_text[1:]
+        return self.data[index]
 
 
     def __len__(self):
