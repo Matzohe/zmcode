@@ -1,7 +1,7 @@
 from src.utils.DataLoader.NSDDataLoader import NSDDataset
 from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
 from src.utils.ModelTrainer import ModelTrainer
-from src.utils.utils import INIconfig
+from src.utils.utils import INIconfig, check_path
 from tqdm import tqdm
 import src.MultiModal.clip as clip
 import torch
@@ -25,6 +25,7 @@ class LinearClip2Brain:
         self.dataset = NSDDataset(config)
         self.loss_function = nn.MSELoss()
         self.epochs = int(config.TRAINING['epochs'])
+        self.linear_save_root = config.NSD['linear_save_root']
 
         self.individual_bool_list = None
         self.same_bool_list = None
@@ -41,14 +42,13 @@ class LinearClip2Brain:
         
     def _initialize(self, subj=1, voxel_activation_roi="SELECTIVE_ROI"):
         avg_activation = self.dataset.load_avg_activation_value(subj, voxel_activation_roi)
+        self.individual_bool_list, self.same_bool_list = self.dataset.load_individual_and_same_image_bool(subj)
 
         self.individual_avg_activation = avg_activation[self.individual_bool_list]
         self.same_avg_activation = avg_activation[self.same_bool_list]
 
-        self.individual_bool_list, self.same_bool_list = self.dataset.load_individual_and_same_image_bool(subj)
-
         image_root_list = self.dataset.load_image_root(subj)
-        image_root_list = [os.path.join(self.cooc_root, each) for each in self.image_root_list]
+        image_root_list = [os.path.join(self.coco_root, each) for each in image_root_list]
 
         self.training_image_root_list = []
         self.val_image_root_list = []
@@ -59,7 +59,7 @@ class LinearClip2Brain:
             else:
                 self.val_image_root_list.append(image_root_list[i])
 
-        self.voxel_num = self.avg_activation.shape[-1]
+        self.voxel_num = avg_activation.shape[-1]
         self.linear_layer = nn.Linear(self.embedding_dim, self.voxel_num, bias=True).to(self.device)
         self.optimizer = optim.AdamW(self.linear_layer.parameters(), lr=float(self.config.TRAINING['lr']), 
                                      weight_decay=float(self.config.TRAINING['weight_decay']))
@@ -72,8 +72,8 @@ class LinearClip2Brain:
         self.linear_layer = nn.Linear(self.embedding_dim, self.voxel_num)
 
     def _setup_image_dataloader(self):
-        if self.image_root_list is None:
-            raise ValueError("please use _initialize funtion first to get the image root list")
+        if self.training_image_root_list is None:
+            raise ValueError("please use _initialize funtion first to get the training image root list")
         self.training_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.training_image_root_list, image_transform=self.model_transform)
         self.val_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.val_image_root_list, image_transform=self.model_transform)
     
@@ -104,4 +104,27 @@ class LinearClip2Brain:
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+            
+            # validate the performence of this epoch's trained model
+            valid_loss = 0
+            for i, images in tqdm(enumerate(self.val_dataloader())):
+                with torch.no_grad():
+                    image_embeddings = self.model.encode_image(images.to(self.device))
+                
+                    predict_activation = self.linear_layer(image_embeddings)
+
+                try:
+                    target = self.same_avg_activation[i * self.batch_size: (i + 1) * self.batch_size].to(self.device)
+                except:
+                    target = self.same_avg_activation[i * self.batch_size:].to(self.device)
+
+                loss = self.loss_function(predict_activation, target).sum()
+
+                valid_loss += loss.detach().cpu()
+
+            print("epoch:", epoch, "    valid_loss:", valid_loss)
+
+        model_save_root = self.linear_save_root.format(subj, voxel_activation_roi)
+        check_path(model_save_root)
+        torch.save(self.linear_layer.state_dict(), model_save_root)
         
