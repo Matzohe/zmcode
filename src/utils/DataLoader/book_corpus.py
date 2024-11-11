@@ -14,7 +14,8 @@ class BookCorpusDataset(Dataset):
 
 
     def __getitem__(self, index):
-        return self.data[index]
+        tokenized_text = self.tokenizer(self.data[index], truncate=True).squeeze(0)
+        return tokenized_text[: -1], tokenized_text[1:]
 
 
     def __len__(self):
@@ -25,5 +26,3 @@ def get_book_corpus_dataloader(config):
     dataset = BookCorpusDataset(config, index=0)
     dataloader = DataLoader(dataset, batch_size=int(config.TRAINING['batch_size']), shuffle=False)
     return dataloader
-    
-
