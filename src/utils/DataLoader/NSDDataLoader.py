@@ -285,8 +285,16 @@ class NSDDataset:
         else:
             response_root = self.voxal_nonzscore_response_save_root.format(subj, roi_name)
 
-        response_data = torch.load(response_root)
-        trail_data = torch.load(trail_root)
+        try:
+            response_data = torch.load(response_root)
+        except:
+            response_data = self.extract_voxal_activation(subj=subj, roi_name=roi_name, save=True, zscore=zscored)
+
+        try:            
+            trail_data = torch.load(trail_root)
+        except:
+            trail_data = self.extract_trail_index(subj=subj, save=True)
+        
         repeat_num = trail_data.shape[0]
 
         ev_list = []

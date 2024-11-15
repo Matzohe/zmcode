@@ -1,6 +1,5 @@
 from src.utils.DataLoader.NSDDataLoader import NSDDataset
 from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
-from src.utils.ModelTrainer import ModelTrainer
 from src.utils.utils import INIconfig, check_path
 from tqdm import tqdm
 import src.MultiModal.clip as clip
