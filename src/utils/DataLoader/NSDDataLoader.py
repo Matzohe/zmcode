@@ -346,7 +346,7 @@ class NSDDataset:
         try:
             avg_activation = torch.load(avg_activation_root)
         except:
-            print("extracting activation ev")
+            print("extracting avg activation")
             _, avg_activation = self.compute_ev(subj=subj, roi_name=roi_name, zscored=zscored, save=True)
         return avg_activation
 
