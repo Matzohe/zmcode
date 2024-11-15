@@ -99,7 +99,7 @@ class LinearClip2Brain:
                 
                 loss = self.loss_function(predict_activation, target).sum()
                 if summary_writter is not None:
-                    summary_writter.add_scalar("loss", loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
+                    summary_writter.add_scalar("subj{}_loss".format(subj), loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
 
                 self.optimizer.zero_grad()
                 loss.backward()
