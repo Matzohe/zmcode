@@ -22,6 +22,7 @@ class NSDDataset:
         self.roi_mask_root = config.NSD['roi_mask_root']
         self.session_num = int(config.NSD['session_num'])
         self.beta_value_root = config.NSD['beta_value_root']
+        self.from_coco_split = eval(config.NSD['from_coco_split'])
 
         self.image_index_save_root = config.NSD['image_index_save_root']
         self.image_root_save_root = config.NSD['image_root_save_root']
@@ -84,11 +85,16 @@ class NSDDataset:
                            save = False,
                            ) -> List[str]:
         
+        from_coco_split = self.from_coco_split
         stim_info = pd.read_pickle(self.stimuli_info)
         key = "subject{}_rep0".format(subj)
         image_root_list = list(stim_info.cocoSplit[stim_info[key] != 0])
         image_index_list = list(stim_info.cocoId[stim_info[key] != 0])
-        image_root_list = ["/".join([i, "{:012}.jpg".format(j)]) for i, j in zip(image_root_list, image_index_list)]
+        if from_coco_split:
+            image_root_list = ["/".join([i, "{:012}.jpg".format(j)]) for i, j in zip(image_root_list, image_index_list)]
+        else:
+            image_root_list = ["{}.jpg".format(j) for j in image_index_list]
+
         if save:
             save_path = self.image_root_save_root.format(subj)
             check_path(save_path)

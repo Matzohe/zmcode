@@ -18,7 +18,9 @@ class LinearClip2Brain:
         self.lr = float(config.TRAINING['lr'])
         self.lr_decay_rate = float(config.TRAINING['lr_decay_rate'])
         self.batch_size = int(config.TRAINING['batch_size'])
-        self.coco_root = config.DATASET['coco_root']
+        self.coco_root = config.DATASET['coco']
+        self.NSD_coco_root = config.DATASET['NSD_coco']
+        self.from_coco_split = eval(config.DATASET['from_coco_split'])
         self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'])
         self.embedding_dim = int(config.IMAGE_EMBEDDING["embedding_dim"])
         self.dataset = NSDDataset(config)
@@ -47,7 +49,10 @@ class LinearClip2Brain:
         self.same_avg_activation = avg_activation[self.same_bool_list]
 
         image_root_list = self.dataset.load_image_root(subj)
-        image_root_list = [os.path.join(self.coco_root, each) for each in image_root_list]
+        if self.from_coco_split:
+            image_root_list = [os.path.join(self.coco_root, each) for each in image_root_list]
+        else:
+            image_root_list = [os.path.join(self.NSD_coco_root, each) for each in image_root_list]
 
         self.training_image_root_list = []
         self.val_image_root_list = []
