@@ -19,14 +19,15 @@ class LinearClip2Brain:
         self.lr_decay_rate = float(config.TRAINING['lr_decay_rate'])
         self.batch_size = int(config.TRAINING['batch_size'])
         self.coco_root = config.DATASET['coco']
-        self.NSD_coco_root = config.DATASET['NSD_coco']
+        self.NSD_coco_root = config.DATASET['nsd_coco']
         self.from_coco_split = eval(config.DATASET['from_coco_split'])
-        self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'])
+        self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'], device=self.device)
         self.embedding_dim = int(config.IMAGE_EMBEDDING["embedding_dim"])
         self.dataset = NSDDataset(config)
         self.loss_function = nn.MSELoss()
         self.epochs = int(config.TRAINING['epochs'])
         self.linear_save_root = config.NSD['linear_save_root']
+        self.calcutale_type = eval(config.TRAINING['calcutale_type'])
 
         self.individual_bool_list = None
         self.same_bool_list = None
@@ -81,7 +82,7 @@ class LinearClip2Brain:
         self.training_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.training_image_root_list, image_transform=self.model_transform)
         self.val_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.val_image_root_list, image_transform=self.model_transform)
     
-    def linear_fitting(self, subj=1, voxel_activation_roi="SELECTIVE_ROI", summary_writter=None):
+    def linear_fitting(self, subj=1, voxel_activation_roi="SELECTIVE_ROI", summary_writer=None):
 
         self._initialize(subj, voxel_activation_roi)
         self._setup_image_dataloader()
@@ -94,7 +95,7 @@ class LinearClip2Brain:
             for i, images in tqdm(enumerate(self.training_dataloader), total=len(self.training_dataloader)):
                 with torch.no_grad():
                     image_embeddings = self.model.encode_image(images.to(self.device))
-                
+                image_embeddings = image_embeddings / torch.norm(image_embeddings, keepdim=True)
                 predict_activation = self.linear_layer(image_embeddings)
                 try:
                     target = self.individual_avg_activation[i * self.batch_size: (i + 1) * self.batch_size].to(self.device)
@@ -102,8 +103,8 @@ class LinearClip2Brain:
                     target = self.individual_avg_activation[i * self.batch_size:].to(self.device)
                 
                 loss = self.loss_function(predict_activation, target).sum()
-                if summary_writter is not None:
-                    summary_writter.add_scalar("subj{}_loss".format(subj), loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
+                if summary_writer is not None:
+                    summary_writer.add_scalar("subj{}_loss".format(subj), loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
 
                 self.optimizer.zero_grad()
                 loss.backward()
