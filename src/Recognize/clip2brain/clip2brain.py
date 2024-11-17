@@ -20,7 +20,7 @@ class LinearClip2Brain:
         self.batch_size = int(config.TRAINING['batch_size'])
         self.coco_root = config.DATASET['coco']
         self.NSD_coco_root = config.DATASET['nsd_coco']
-        self.from_coco_split = eval(config.DATASET['from_coco_split'])
+        self.from_coco_split = eval(config.NSD['from_coco_split'])
         self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'], device=self.device)
         self.embedding_dim = int(config.IMAGE_EMBEDDING["embedding_dim"])
         self.dataset = NSDDataset(config)
