@@ -15,16 +15,19 @@ class LinearClip2Brain:
     def __init__(self, config):
         self.config = config
         self.device = config.TRAINING['device']
+        self.dtype = eval(config.TRAINING['dtype'])
         self.lr = float(config.TRAINING['lr'])
         self.lr_decay_rate = float(config.TRAINING['lr_decay_rate'])
         self.batch_size = int(config.TRAINING['batch_size'])
         self.coco_root = config.DATASET['coco']
         self.NSD_coco_root = config.DATASET['nsd_coco']
+        self.image_activation_save_root = config.NSD['image_activation_save_root']
+        self.image_same_activation_save_root = config.NSD['image_same_activation_save_root']
         self.from_coco_split = eval(config.NSD['from_coco_split'])
         self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'], device=self.device)
         self.embedding_dim = int(config.IMAGE_EMBEDDING["embedding_dim"])
         self.dataset = NSDDataset(config)
-        self.loss_function = nn.MSELoss()
+        self.loss_function = nn.MSELoss().to(self.device)
         self.epochs = int(config.TRAINING['epochs'])
         self.linear_save_root = config.NSD['linear_save_root']
         self.calcutale_type = eval(config.TRAINING['calcutale_type'])
@@ -87,49 +90,91 @@ class LinearClip2Brain:
         self._initialize(subj, voxel_activation_roi)
         self._setup_image_dataloader()
 
+        check_path(self.image_activation_save_root.format(subj))
+        check_path(self.image_same_activation_save_root.format(subj))
+        
+        if not os.path.exists(self.image_activation_save_root.format(subj)):
+            save_list = []
+            for i, images in tqdm(enumerate(self.training_dataloader), total=len(self.training_dataloader)):
+                with torch.no_grad():
+                    image_embeddings = self.model.encode_image(images.to(self.device)).to(dtype=self.dtype)
+                    image_embeddings = image_embeddings / torch.norm(image_embeddings, keepdim=True)
+                save_list.append(image_embeddings.detach().cpu())
+                break
+            save_list = torch.cat(save_list, dim=0)
+            torch.save(save_list, self.image_activation_save_root.format(subj))
+            training_data = save_list
+        else:
+            training_data = torch.load(self.image_activation_save_root.format(subj))
+
+
+        if not os.path.exists(self.image_same_activation_save_root.format(subj)):
+            save_list = []
+            for i, images in tqdm(enumerate(self.val_dataloader), total=len(self.val_dataloader)):
+                with torch.no_grad():
+                    image_embeddings = self.model.encode_image(images.to(self.device)).to(dtype=self.dtype)
+                    image_embeddings = image_embeddings / torch.norm(image_embeddings, keepdim=True)
+                save_list.append(image_embeddings.detach().cpu())
+                break
+            save_list = torch.cat(save_list, dim=0)
+            torch.save(save_list, self.image_same_activation_save_root.format(subj))
+            valid_data = save_list
+        else:
+            valid_data = torch.load(self.image_same_activation_save_root.format(subj))
+
         for epoch in range(self.epochs):
             new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = new_lrate
 
-            for i, images in tqdm(enumerate(self.training_dataloader), total=len(self.training_dataloader)):
-                with torch.no_grad():
-                    image_embeddings = self.model.encode_image(images.to(self.device))
-                image_embeddings = image_embeddings / torch.norm(image_embeddings, keepdim=True)
-                predict_activation = self.linear_layer(image_embeddings)
-                try:
-                    target = self.individual_avg_activation[i * self.batch_size: (i + 1) * self.batch_size].to(self.device)
-                except:
-                    target = self.individual_avg_activation[i * self.batch_size:].to(self.device)
+            
+            for i in range(training_data.shape[0] // self.batch_size + 1):
                 
-                loss = self.loss_function(predict_activation, target).sum()
+                try:
+                    if i * self.batch_size > training_data.shape[0]:
+                        break
+
+                    batch_embedding = training_data[i * self.batch_size: (i + 1) * self.batch_size]
+                except:
+                    batch_embedding = training_data[i * self.batch_size: ]
+
+                batch_embedding = batch_embedding.to(self.device)
+                predict_activation = self.linear_layer(batch_embedding)
+                target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                loss = self.loss_function(predict_activation, target)
                 if summary_writer is not None:
                     summary_writer.add_scalar("subj{}_loss".format(subj), loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                break
             
             # validate the performence of this epoch's trained model
             valid_loss = 0
-            for i, images in tqdm(enumerate(self.val_dataloader())):
-                with torch.no_grad():
-                    image_embeddings = self.model.encode_image(images.to(self.device))
+            for i in range(valid_data.shape[0] // self.batch_size + 1):
                 
-                    predict_activation = self.linear_layer(image_embeddings)
-
                 try:
-                    target = self.same_avg_activation[i * self.batch_size: (i + 1) * self.batch_size].to(self.device)
+                    if i * self.batch_size > valid_data.shape[0]:
+                        break
+                    batch_embedding = valid_data[i * self.batch_size: (i + 1) * self.batch_size]
                 except:
-                    target = self.same_avg_activation[i * self.batch_size:].to(self.device)
+                    batch_embedding = valid_data[i * self.batch_size: ]
 
+                batch_embedding = batch_embedding.to(self.device)
+
+                predict_activation = self.linear_layer(batch_embedding)
+
+                target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
                 loss = self.loss_function(predict_activation, target).sum()
 
                 valid_loss += loss.detach().cpu()
+                break
 
             print("epoch:", epoch, "    valid_loss:", valid_loss)
 
-        model_save_root = self.linear_save_root.format(subj, voxel_activation_roi)
-        check_path(model_save_root)
-        torch.save(self.linear_layer.state_dict(), model_save_root)
+            model_save_root = self.linear_save_root.format(subj, voxel_activation_roi)
+            check_path(model_save_root)
+            torch.save(self.linear_layer.state_dict(), model_save_root)
+            raise RuntimeError()
         
