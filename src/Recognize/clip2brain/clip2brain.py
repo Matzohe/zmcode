@@ -1,6 +1,7 @@
 from src.utils.DataLoader.NSDDataLoader import NSDDataset
 from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
 from src.utils.utils import INIconfig, check_path
+from src.utils.r2_score import r2_score
 from tqdm import tqdm
 import src.MultiModal.clip as clip
 import torch
@@ -93,6 +94,7 @@ class LinearClip2Brain:
         check_path(self.image_activation_save_root.format(subj))
         check_path(self.image_same_activation_save_root.format(subj))
         
+        # extract image embedding
         if not os.path.exists(self.image_activation_save_root.format(subj)):
             save_list = []
             for i, images in tqdm(enumerate(self.training_dataloader), total=len(self.training_dataloader)):
@@ -106,7 +108,6 @@ class LinearClip2Brain:
             training_data = save_list
         else:
             training_data = torch.load(self.image_activation_save_root.format(subj))
-
 
         if not os.path.exists(self.image_same_activation_save_root.format(subj)):
             save_list = []
@@ -122,11 +123,11 @@ class LinearClip2Brain:
         else:
             valid_data = torch.load(self.image_same_activation_save_root.format(subj))
 
+        # fit linear layer
         for epoch in range(self.epochs):
             new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = new_lrate
-
             
             for i in range(training_data.shape[0] // self.batch_size + 1):
                 
@@ -177,4 +178,20 @@ class LinearClip2Brain:
             check_path(model_save_root)
             torch.save(self.linear_layer.state_dict(), model_save_root)
             raise RuntimeError()
+    
+    def test_fitting_r2_score(self, subj=1, voxel_activation_roi="SELECTIVE_ROI"):
+
+        self._initialize(subj, voxel_activation_roi)
+        try:
+            model_state_dict = torch.load(self.linear_save_root.format(subj, voxel_activation_roi))
+        except:
+            raise ValueError("No such file or directory: '{}'".format(self.linear_save_root.format(subj, voxel_activation_roi)))
+
+        self.linear_layer.load_state_dict(model_state_dict)
         
+        valid_data = torch.load(self.image_same_activation_save_root.format(subj))
+        valid_output = self.linear_layer(valid_data)
+
+        score = r2_score(valid_output, self.same_avg_activation)
+        print("r2_score:", score)
+
