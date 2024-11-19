@@ -419,10 +419,12 @@ class NSDDataset:
         key_0 = "subject{}_rep0".format(subj)
         key_1 = "subject{}_rep0".format(subj % 8 + 1)
         
+        num = 0
         individual_list = list(map(lambda x, y: x & y, stim_info[key_0] != 0, stim_info[key_1] == 0))
         same_list = list(map(lambda x, y: x & y, stim_info[key_0] != 0, stim_info[key_1] != 0))
         num = 0
         for i in range(len(individual_list)):
+            
             if individual_list[i]:
                 individual_bool_list[num] = True
                 num += 1
