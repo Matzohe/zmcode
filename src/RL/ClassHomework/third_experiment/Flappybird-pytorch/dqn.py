@@ -8,6 +8,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import copy
+import matplotlib.pyplot as plt
 
 from game.flappy_bird import GameState
 
@@ -100,6 +102,20 @@ def train(model, start):
 
     epsilon_decrements = np.linspace(model.initial_epsilon, model.final_epsilon, model.number_of_iterations)
 
+    # 添加target model
+    target_model = copy.deepcopy(model)
+    target_model.eval()
+    num_update = 0 # 用于更新target model，每100 iteration更新一次
+    episode = 0 # 用于绘画最后的epsiode图
+    score_list = []
+    episode_list = []
+    episode_reward = 0
+    plt.ion()
+
+    fig, ax = plt.subplots()
+
+    line, = ax.plot(episode_list, score_list, 'b-')
+
     # main infinite loop
     while iteration < model.number_of_iterations:
         # get output from the neural network
@@ -158,7 +174,9 @@ def train(model, start):
             state_1_batch = state_1_batch.cuda()
 
         # get output for the next state
-        output_1_batch = model(state_1_batch)
+        # output_1_batch = model(state_1_batch)
+        # 将其替换为target model
+        output_1_batch = target_model(state_1_batch)
 
         # set y_j to r_j for terminal state, otherwise to r_j + gamma*max(Q)
         y_batch = torch.cat(tuple(reward_batch[i] if minibatch[i][4]
@@ -185,13 +203,36 @@ def train(model, start):
         state = state_1
         iteration += 1
 
+        if terminal:
+            episode += 1
+            episode_reward += reward.numpy()[0][0]
+            score_list.append(episode_reward)
+            episode_list.append(episode)
+            line.set_xdata(episode_list)
+            line.set_ydata(score_list)
+            episode_reward = 0
+            ax.relim()
+            ax.autoscale_view()
+            plt.draw()
+            plt.pause(0.0001)
+
+        else:
+            episode_reward += reward.numpy()[0][0]
+
+        if iteration % 100 == 0:
+            target_model = copy.deepcopy(model)
+            target_model.eval()
+
         if iteration % 25000 == 0:
             torch.save(model, "pretrained_model/current_model_" + str(iteration) + ".pth")
 
         print("iteration:", iteration, "elapsed time:", time.time() - start, "epsilon:", epsilon, "action:",
               action_index.cpu().detach().numpy(), "reward:", reward.numpy()[0][0], "Q max:",
               np.max(output.cpu().detach().numpy()))
+        
+    plt.savefig("TM_dqn.png", dpi=300)
 
+    torch.save(model, "pretrained_model/current_model_" + str(iteration) + ".pth")
 
 def test(model):
     game_state = GameState()
@@ -226,6 +267,7 @@ def test(model):
 
         # set state to be state_1
         state = state_1
+
 
 
 def main(mode):
