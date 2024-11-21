@@ -120,14 +120,22 @@ class NSDDataset:
                             ) -> np.ndarray:
         # Get the fmri signal index for each image in test for a certain subj
         # each image has 3 trails, finally we will get 10000 * 3 trails
+        # However, there exists a condition, that some subj didn't have 750 sessions
+        # So we need to perform our code for special condition
+        # In the code, we choose to sellect the first repo to select image index
+        # then append the rest repo information based on the image index
 
         stim_info = pd.read_pickle(self.stimuli_info)
         key = "subject%d_rep%01d"
         trail_index = []
         for i in range(self.repo):
             select_info = key % (subj, i)
-            trail_index.append(list(stim_info[select_info][stim_info[select_info] != 0]))
-        trail_index = np.array(trail_index).T - 1  # Turn to shape [10000, 3], and change from 1 based to 0 based
+            trail_index.append(list(stim_info[select_info][stim_info[key.format(0)] != 0]))
+
+        # Turn to shape [10000, 3], and change from 1 based to 0 based
+        # If subj didn't have 750 sessions, the trail_index would be -1
+        trail_index = np.array(trail_index).T - 1  
+
 
         if save:
             save_path = self.image_trail_save_path.format(subj)
@@ -225,17 +233,19 @@ class NSDDataset:
         for session in range(self.session_num):
             session_num = session + 1
             beta_value_root = self.beta_value_root.format(subj, session_num)
+            # The default processing for several subjects whose session number is less than 40
+            try:
+                fmri_data = nib.load(beta_value_root)
+                
+                beta = fmri_data.get_fdata()
+                cortical_beta = (beta[mask]).T  # verify the mask with array
+                if cortical_beta_mat is None:
+                    cortical_beta_mat = cortical_beta / 300
+                else:
+                    cortical_beta_mat = np.vstack((cortical_beta_mat, cortical_beta / 300))
 
-            fmri_data = nib.load(beta_value_root)
-            
-            beta = fmri_data.get_fdata()
-            cortical_beta = (beta[mask]).T  # verify the mask with array
-
-            if cortical_beta_mat is None:
-                cortical_beta_mat = cortical_beta / 300
-            
-            else:
-                cortical_beta_mat = np.vstack((cortical_beta_mat, cortical_beta / 300))
+            except:
+                break
 
         if zscore:
             print("Zscoring...")
@@ -305,15 +315,19 @@ class NSDDataset:
 
         ev_list = []
         average_voxal_activation = torch.zeros(size=(repeat_num, response_data.shape[1]))
+        # An bool list to show which image has the correct session number
+        bool_list = (trail_data != -1)
 
         for v in tqdm(range(response_data.shape[1]), desc="computing everage voxal activations"):
             repo_data_list = []
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
             repo_data_list = torch.tensor(repo_data_list).T
-
-            average_voxal_activation[:, v] = torch.mean(repo_data_list, dim=1)
-
+            
+            mean_response = torch.sum(repo_data_list * bool_list, dim=-1) / torch.sum(bool_list, dim=-1)
+            average_voxal_activation[:, v] = mean_response
+            
+            # TODO: edit the ev function to face the condition when some subjs have less than 40 sessions
             ev_list.append(ev(repo_data_list, biascorr=biascorr))
 
         ev_list = torch.tensor(ev_list)
