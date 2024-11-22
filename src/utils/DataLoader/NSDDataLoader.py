@@ -130,7 +130,7 @@ class NSDDataset:
         trail_index = []
         for i in range(self.repo):
             select_info = key % (subj, i)
-            trail_index.append(list(stim_info[select_info][stim_info[key.format(0)] != 0]))
+            trail_index.append(list(stim_info[select_info][stim_info[key % (subj, 0)] != 0]))
 
         # Turn to shape [10000, 3], and change from 1 based to 0 based
         # If subj didn't have 750 sessions, the trail_index would be -1
@@ -315,16 +315,19 @@ class NSDDataset:
 
         ev_list = []
         average_voxal_activation = torch.zeros(size=(repeat_num, response_data.shape[1]))
-        # An bool list to show which image has the correct session number
-        bool_list = (trail_data != -1)
+        if response_data.shape[0] < 30000:
+            new_response_data = np.zeros(shape=(30000, response_data.shape[1]))
+            new_response_data[:] = np.nan
+            new_response_data[:response_data.shape[0], :] = response_data.copy()
+            response_data = new_response_data
 
         for v in tqdm(range(response_data.shape[1]), desc="computing everage voxal activations"):
             repo_data_list = []
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
-            repo_data_list = torch.tensor(repo_data_list).T
-            
-            mean_response = torch.sum(repo_data_list * bool_list, dim=-1) / torch.sum(bool_list, dim=-1)
+
+            repo_data_list = torch.from_numpy(np.array(repo_data_list).T)
+            mean_response = torch.nanmean(repo_data_list, dim=1)
             average_voxal_activation[:, v] = mean_response
             
             # TODO: edit the ev function to face the condition when some subjs have less than 40 sessions
@@ -397,13 +400,18 @@ class NSDDataset:
         trail_data = torch.load(trail_root)
 
         pure_list = []
+        if response_data.shape[0] < 30000:
+            new_response_data = np.zeros(size=(30000, response_data.shape[1]))
+            new_response_data[:] = np.nan
+            new_response_data[:response_data.shape[0], :] = response_data.copy()
+            response_data = new_response_data
 
         for v in tqdm(range(response_data.shape[1]), desc="computing everage voxal activations"):
             repo_data_list = []
             for r in range(self.repo):
                 repo_data_list.append(response_data[trail_data[:, r], v])
             
-            repo_data_list = torch.tensor(repo_data_list).T.unsqueeze(1) # 10000 * 1 * 3
+            repo_data_list = torch.from_numpy(repo_data_list).T.unsqueeze(1) # 10000 * 1 * 3
             
             pure_list.append(repo_data_list)
             

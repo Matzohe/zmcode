@@ -26,6 +26,7 @@ class LinearClip2Brain:
         self.image_same_activation_save_root = config.NSD['image_same_activation_save_root']
         self.from_coco_split = eval(config.NSD['from_coco_split'])
         self.model, self.model_transform = clip.load(config.IMAGE_EMBEDDING['model_name'], device=self.device)
+        self.model_name = config.IMAGE_EMBEDDING['model_name'].replace("/", "-")
         self.embedding_dim = int(config.IMAGE_EMBEDDING["embedding_dim"])
         self.dataset = NSDDataset(config)
         self.loss_function = nn.MSELoss().to(self.device)
@@ -48,6 +49,9 @@ class LinearClip2Brain:
         self.optimizer = None
         
     def _initialize(self, subj=1, voxel_activation_roi="SELECTIVE_ROI"):
+
+        self.model_name = config.IMAGE_EMBEDDING['model_name'].replace("/", "-")
+        
         avg_activation = self.dataset.load_avg_activation_value(subj, voxel_activation_roi)
         self.individual_bool_list, self.same_bool_list = self.dataset.load_individual_and_same_image_bool(subj)
 
@@ -92,10 +96,10 @@ class LinearClip2Brain:
         self._initialize(subj, voxel_activation_roi)
         self._setup_image_dataloader()
 
-        check_path(self.image_activation_save_root.format(subj))
-        check_path(self.image_same_activation_save_root.format(subj))
+        check_path(self.image_activation_save_root.format(subj, self.model_name))
+        check_path(self.image_same_activation_save_root.format(subj, self.model_name))
         
-        if not os.path.exists(self.image_activation_save_root.format(subj)):
+        if not os.path.exists(self.image_activation_save_root.format(subj, self.model_name)):
             save_list = []
             for i, images in tqdm(enumerate(self.training_dataloader), total=len(self.training_dataloader)):
                 with torch.no_grad():
@@ -104,13 +108,13 @@ class LinearClip2Brain:
                 save_list.append(image_embeddings.detach().cpu())
                 
             save_list = torch.cat(save_list, dim=0)
-            torch.save(save_list, self.image_activation_save_root.format(subj))
+            torch.save(save_list, self.image_activation_save_root.format(subj, self.model_name))
             training_data = save_list
         else:
-            training_data = torch.load(self.image_activation_save_root.format(subj))
+            training_data = torch.load(self.image_activation_save_root.format(subj, self.model_name))
 
 
-        if not os.path.exists(self.image_same_activation_save_root.format(subj)):
+        if not os.path.exists(self.image_same_activation_save_root.format(subj, self.model_name)):
             save_list = []
             for i, images in tqdm(enumerate(self.val_dataloader), total=len(self.val_dataloader)):
                 with torch.no_grad():
@@ -119,10 +123,10 @@ class LinearClip2Brain:
                 save_list.append(image_embeddings.detach().cpu())
                 
             save_list = torch.cat(save_list, dim=0)
-            torch.save(save_list, self.image_same_activation_save_root.format(subj))
+            torch.save(save_list, self.image_same_activation_save_root.format(subj, self.model_name))
             valid_data = save_list
         else:
-            valid_data = torch.load(self.image_same_activation_save_root.format(subj))
+            valid_data = torch.load(self.image_same_activation_save_root.format(subj, self.model_name))
 
         for epoch in range(self.epochs):
             new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))
@@ -143,6 +147,12 @@ class LinearClip2Brain:
                 batch_embedding = batch_embedding.to(self.device)
                 predict_activation = self.linear_layer(batch_embedding)
                 target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                # in some condition, subj haven't see several images, and the result is Nanm we need to process this condition
+                if torch.isnan(target).any():
+                    nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
+                    predict_activation = predict_activation[nan_embedding_list]
+                    target = target[nan_embedding_list]
+
                 loss = self.loss_function(predict_activation, target)
                 if summary_writer is not None:
                     summary_writer.add_scalar("subj{}_loss".format(subj), loss.detach().cpu(), epoch * len(self.training_dataloader) + i)
@@ -154,31 +164,37 @@ class LinearClip2Brain:
             
             # validate the performence of this epoch's trained model
             valid_loss = 0
-            for i in range(valid_data.shape[0] // self.batch_size + 1):
-                
-                try:
-                    if i * self.batch_size > valid_data.shape[0]:
-                        break
-                    batch_embedding = valid_data[i * self.batch_size: (i + 1) * self.batch_size]
-                except:
-                    batch_embedding = valid_data[i * self.batch_size: ]
+            with torch.no_grad():
+                for i in range(valid_data.shape[0] // self.batch_size + 1):
+                    
+                    try:
+                        if i * self.batch_size > valid_data.shape[0]:
+                            break
+                        batch_embedding = valid_data[i * self.batch_size: (i + 1) * self.batch_size]
+                    except:
+                        batch_embedding = valid_data[i * self.batch_size: ]
 
-                batch_embedding = batch_embedding.to(self.device)
+                    batch_embedding = batch_embedding.to(self.device)
 
-                predict_activation = self.linear_layer(batch_embedding)
+                    predict_activation = self.linear_layer(batch_embedding)
 
-                target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
-                loss = self.loss_function(predict_activation, target).sum()
+                    target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                    if torch.isnan(target).any():
+                        nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
+                        predict_activation = predict_activation[nan_embedding_list]
+                        target = target[nan_embedding_list]
 
-                valid_loss += loss.detach().cpu()
+                    loss = self.loss_function(predict_activation, target).sum()
 
-            valid_loss = valid_loss / valid_data.shape[0]
+                    valid_loss += loss.detach().cpu()
+
+                valid_loss = valid_loss / valid_data.shape[0]
 
             print("epoch:", epoch, "    valid_loss:", valid_loss)
 
-            model_save_root = self.linear_save_root.format(subj, voxel_activation_roi)
-            check_path(model_save_root)
-            torch.save(self.linear_layer.state_dict(), model_save_root)
+        model_save_root = self.linear_save_root.format(subj, self.model_name, voxel_activation_roi)
+        check_path(model_save_root)
+        torch.save(self.linear_layer.state_dict(), model_save_root)
 
         self.test_fitting_r2_score(subj=subj, voxel_activation_roi=voxel_activation_roi)
 
@@ -187,16 +203,21 @@ class LinearClip2Brain:
 
         self._initialize(subj, voxel_activation_roi)
         try:
-            model_state_dict = torch.load(self.linear_save_root.format(subj, voxel_activation_roi))
+            model_state_dict = torch.load(self.linear_save_root.format(subj, self.model_name, voxel_activation_roi))
         except:
-            raise ValueError("No such file or directory: '{}'".format(self.linear_save_root.format(subj, voxel_activation_roi)))
+            raise ValueError("No such file or directory: '{}'".format(self.linear_save_root.format(subj, self.model_name, voxel_activation_roi)))
 
         self.linear_layer.load_state_dict(model_state_dict)
         
-        valid_data = torch.load(self.image_same_activation_save_root.format(subj)).to(self.device)
+        valid_data = torch.load(self.image_same_activation_save_root.format(subj, self.model_name)).to(self.device)
         valid_output = self.linear_layer(valid_data)
-        score = r2_score(self.same_avg_activation.to(self.device), valid_output)
-        r2_save_root = self.r2_save_root.format(subj, self.model._get_name(), voxel_activation_roi)
+        if torch.isnan(self.same_avg_activation).any():
+            nan_embedding_list = (torch.isnan(self.same_avg_activation).sum(dim=-1) == 0)
+            predict_activation = valid_output[nan_embedding_list]
+            target = self.same_avg_activation[nan_embedding_list].to(device=self.device)
+
+        score = r2_score(target, predict_activation)
+        r2_save_root = self.r2_save_root.format(subj, self.model_name, voxel_activation_roi)
         check_path(r2_save_root)
         torch.save(score, r2_save_root)
         print("r2_score:", torch.mean(score))
