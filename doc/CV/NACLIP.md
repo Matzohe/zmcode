@@ -110,9 +110,9 @@ NACLIP提出了一种新的相似性度量方法，即**键-键相似性（Key-K
 
 \[
 \mathbf{W}_{\text{init}} = \begin{bmatrix}
--1 &  0 & -1 \\
+-1 &  -1 & -1 \\
 -1 &  1 & -1 \\
--1 &  0 & -1
+-1 &  -1 & -1
 \end{bmatrix}
 \]
 
@@ -200,9 +200,10 @@ m_{\text{final}} = \text{PAMR}(x, m)
 
 ### 结果展示
 
-由于模型是training free的，我们只需要修改图像路径即可
+由于模型是training free的，我们只需要修改图像路径即可，同时可以使用自己拍摄的照片进行分割，并且能够自行添加新的语义信息
 
-![Image 1](fig2.jpg) &nbsp; ![Image 2](fig3.jpg) &nbsp; ![Image 3](fig4.png)
+![Image 1](fig2.jpg) &nbsp; ![Image 2](fig3.jpg) &nbsp; ![Image 3](fig4.png) ![Image 4](fig5.png) ![](fig7.png)![](fig6.jpg) ![](fig8.png)
+
 
 
 ### 参考文献：

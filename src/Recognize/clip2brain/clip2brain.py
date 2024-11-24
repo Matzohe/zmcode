@@ -50,7 +50,7 @@ class LinearClip2Brain:
         
     def _initialize(self, subj=1, voxel_activation_roi="SELECTIVE_ROI"):
 
-        self.model_name = config.IMAGE_EMBEDDING['model_name'].replace("/", "-")
+        self.model_name = self.config.IMAGE_EMBEDDING['model_name'].replace("/", "-")
         
         avg_activation = self.dataset.load_avg_activation_value(subj, voxel_activation_roi)
         self.individual_bool_list, self.same_bool_list = self.dataset.load_individual_and_same_image_bool(subj)

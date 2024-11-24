@@ -10,7 +10,7 @@ def show_image(title, image):
     plt.show()
 
 # 1. 载入图像，进行傅里叶变换，显示频谱图像
-image = cv2.imread('image.jpg', cv2.IMREAD_GRAYSCALE)
+image = cv2.imread('/Users/a1/Documents/Image/CG_Death_2.png', cv2.IMREAD_GRAYSCALE)
 if image is None:
     print("Could not open or find the image!")
     exit()
