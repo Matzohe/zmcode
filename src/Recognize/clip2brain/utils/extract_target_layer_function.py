@@ -25,12 +25,18 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                 f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
-                    compressed_features[k].append(tmp.view(images.shape[0], -1).detach())
+                    tmp = tmp.view(images.shape[0], -1).detach()
+                    tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                    compressed_features[k].append(tmp)
                 else:
                     if "ViT" in model_name:
-                        compressed_features[k].append(f.data[0, :, :].view(images.shape[0], -1).detach())
+                        tmp = f.data[0, :, :].view(images.shape[0], -1)
+                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                        compressed_features[k].append(tmp)
                     else:
-                        compressed_features[k].append(f.data.view(images.shape[0], -1).detach())
+                        tmp = f.data.view(images.shape[0], -1)
+                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                        compressed_features[k].append(tmp)
                 
     else:
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
@@ -41,13 +47,18 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                 f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
-                    compressed_features[k].append(tmp.squeeze().cpu().view(f.shape[0], -1))
+                    tmp = tmp.view(images.shape[0], -1).detach()
+                    tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                    compressed_features[k].append(tmp)
                 else:
                     if "ViT" in model_name:
-                        compressed_features[k].append(f.data[0, :, :].view(images.shape[0], -1))
-                        raise RuntimeError()
+                        tmp = f.data[0, :, :].view(images.shape[0], -1)
+                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                        compressed_features[k].append(tmp)
                     else:
-                        compressed_features[k].append(f.data.view(f.data.shape[0], -1))
+                        tmp = f.data.view(images.shape[0], -1)
+                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
+                        compressed_features[k].append(tmp)
 
     return compressed_features
 
