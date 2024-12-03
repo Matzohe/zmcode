@@ -100,7 +100,7 @@ class LinearClip2Brain:
 
     # when get multi target layer, we can use this function to change the linear layer
     def _change_linear_layer(self, embedding_dim):
-        self.linear_layer = nn.Linear(embedding_dim, self.voxel_num)
+        self.linear_layer = nn.Linear(embedding_dim, self.voxel_num).to(self.device)
         self.optimizer = optim.AdamW(self.linear_layer.parameters(), lr=float(self.config.TRAINING['lr']), 
                                      weight_decay=float(self.config.TRAINING['weight_decay']))
 
@@ -266,8 +266,10 @@ class LinearClip2Brain:
         
 
         for each_layer in target_layer:
-            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer)).to(device=self.device)
-            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer)).to(device=self.device)
+            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer))
+            training_data = torch.cat(training_data, dim=0)
+            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer))
+            valid_data = torch.cat(valid_data, dim=0)
             self._change_linear_layer(training_data.shape[-1])
             for epoch in range(self.epochs):
                 new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))

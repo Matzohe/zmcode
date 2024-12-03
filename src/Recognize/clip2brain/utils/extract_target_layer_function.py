@@ -19,17 +19,18 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
             with torch.no_grad():
                 text_embedding = torch.randint(size=(images.shape[0], 77), low=0, high=1000).to(device=device)
-                _, image_features = model_visual(images.to(device=device), text_embedding).to(dtype=dtype)
-
+                _, image_features = model_visual(images.to(device=device), text_embedding)
+            
             for k, f in enumerate(image_features.values()):
+                f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
-                    compressed_features[k].append(tmp.view(f.data.shape[0], -1).detach())
+                    compressed_features[k].append(tmp.view(images.shape[0], -1).detach())
                 else:
                     if "ViT" in model_name:
-                        compressed_features[k].append(f.data[:, 0, :].view(f.data.shape[0], -1).detach())
+                        compressed_features[k].append(f.data[0, :, :].view(images.shape[0], -1).detach())
                     else:
-                        compressed_features[k].append(f.data.view(f.shape[0], -1).detach())
+                        compressed_features[k].append(f.data.view(images.shape[0], -1).detach())
                 
     else:
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
@@ -37,11 +38,16 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                 _, image_features = model_visual(images.to(device=device)).to(dtype=dtype)
 
             for k, f in enumerate(image_features.values()):
+                f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
                     compressed_features[k].append(tmp.squeeze().cpu().view(f.shape[0], -1))
                 else:
-                    compressed_features[k].append(f.data.view(f.data.shape[0], -1).cpu())
+                    if "ViT" in model_name:
+                        compressed_features[k].append(f.data[0, :, :].view(images.shape[0], -1))
+                        raise RuntimeError()
+                    else:
+                        compressed_features[k].append(f.data.view(f.data.shape[0], -1))
 
     return compressed_features
 

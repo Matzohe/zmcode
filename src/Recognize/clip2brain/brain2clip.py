@@ -2,8 +2,8 @@ from src.utils.DataLoader.NSDDataLoader import NSDDataset
 from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
 from src.utils.utils import INIconfig, check_path
 from src.utils.r2_score import r2_score
-from utils.load_target_model import get_target_model
-from utils.extract_target_layer_function import extract_target_layer_output, extract_image_embedding
+from .utils.load_target_model import get_target_model
+from .utils.extract_target_layer_function import extract_target_layer_output, extract_image_embedding
 from tqdm import tqdm
 import src.MultiModal.clip as clip
 import torch
@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 
-class LinearClip2Brain:
+class LinearBrain2CLIP:
     def __init__(self, config):
         self.config = config
         self.device = config.TRAINING['device']
@@ -100,7 +100,7 @@ class LinearClip2Brain:
 
     # when get multi target layer, we can use this function to change the linear layer
     def _change_linear_layer(self, embedding_dim):
-        self.linear_layer = nn.Linear(self.voxel_num, embedding_dim)
+        self.linear_layer = nn.Linear(self.voxel_num, embedding_dim).to(self.device)
         self.optimizer = optim.AdamW(self.linear_layer.parameters(), lr=float(self.config.TRAINING['lr']), 
                                      weight_decay=float(self.config.TRAINING['weight_decay']))
 
@@ -145,9 +145,11 @@ class LinearClip2Brain:
                 break
         
 
-        for each_layer in target_layer:
-            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer)).to(device=self.device)
-            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer)).to(device=self.device)
+        for _, each_layer in enumerate(target_layer):
+            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer))
+            training_data = torch.cat(training_data, dim=0)
+            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer))
+            valid_data = torch.cat(valid_data, dim=0)
             self._change_linear_layer(training_data.shape[-1])
             for epoch in range(self.epochs):
                 new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))
@@ -164,14 +166,14 @@ class LinearClip2Brain:
                     except:
                         batch_embedding = training_data[i * self.batch_size: ]
 
-                    batch_embedding = batch_embedding.to(self.device)
+                    batch_embedding = batch_embedding.to(self.device).detach().requires_grad_(False)
                     target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
                     # in some condition, subj haven't see several images, and the result is Nanm we need to process this condition
                     if torch.isnan(target).any():
                         nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
                         batch_embedding = batch_embedding[nan_embedding_list]
                         target = target[nan_embedding_list]
-                    
+                    target = target / torch.norm(target, dim=-1, keepdim=True)
                     predict_embedding = self.linear_layer(target)
                     loss = self.loss_function(predict_embedding, batch_embedding)
                     if summary_writer is not None:
@@ -200,9 +202,9 @@ class LinearClip2Brain:
                             nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
                             batch_embedding = batch_embedding[nan_embedding_list]
                             target = target[nan_embedding_list]
-
+                        target = target / torch.norm(target, dim=-1, keepdim=True)
                         predict_embedding = self.linear_layer(target)
-
+                        
                         loss = self.loss_function(predict_embedding, batch_embedding).sum()
 
                         valid_loss += loss.detach().cpu()
