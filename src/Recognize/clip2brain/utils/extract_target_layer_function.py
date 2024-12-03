@@ -8,7 +8,7 @@ import numpy as np
 
 
 # extract target layer's output with the help of torchextractor
-def extract_target_layer_output(model: torch.nn.Module, model_name: str, 
+def decoding_extract_target_layer_output(model: torch.nn.Module, model_name: str, 
                                 target_layer: List, dataloader: DataLoader, 
                                 device: str, dtype: str) -> List:
 
@@ -25,17 +25,13 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                 f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
-                    tmp = tmp.view(images.shape[0], -1).detach()
-                    tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
-                    compressed_features[k].append(tmp)
+                    compressed_features[k].append(tmp.view(images.shape[0], -1).detach())
                 else:
                     if "ViT" in model_name:
                         tmp = f.data[0, :, :].view(images.shape[0], -1)
-                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
                         compressed_features[k].append(tmp)
                     else:
                         tmp = f.data.view(images.shape[0], -1)
-                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
                         compressed_features[k].append(tmp)
                 
     else:
@@ -47,17 +43,13 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                 f = f / torch.norm(f, dim=-1, keepdim=True)
                 if len(f.size()) > 3:
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
-                    tmp = tmp.view(images.shape[0], -1).detach()
-                    tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
                     compressed_features[k].append(tmp)
                 else:
                     if "ViT" in model_name:
                         tmp = f.data[0, :, :].view(images.shape[0], -1)
-                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
                         compressed_features[k].append(tmp)
                     else:
                         tmp = f.data.view(images.shape[0], -1)
-                        tmp = tmp / torch.norm(tmp, dim=-1, keepdim=True)
                         compressed_features[k].append(tmp)
 
     return compressed_features
