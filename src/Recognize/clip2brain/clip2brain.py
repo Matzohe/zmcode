@@ -245,6 +245,7 @@ class LinearClip2Brain:
             try:
                 _ = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each))
             except:
+                raise RuntimeError("the target layer output extractor didn't perform normalization, please check it")
                 compressed_save_list = decoding_extract_target_layer_output(self.model, self.model_name, target_layer, 
                                                                    self.training_dataloader, self.device, self.dtype)
                 for i, each in enumerate(target_layer):
