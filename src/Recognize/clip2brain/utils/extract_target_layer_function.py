@@ -26,7 +26,10 @@ def extract_target_layer_output(model: torch.nn.Module, model_name: str,
                     tmp = nn.functional.adaptive_avg_pool2d(f.data, (f.shape[-2], f.shape[-1]))
                     compressed_features[k].append(tmp.view(f.data.shape[0], -1).detach())
                 else:
-                    compressed_features[k].append(f.data.view(f.shape[0], -1).detach())
+                    if "ViT" in model_name:
+                        compressed_features[k].append(f.data[:, 0, :].view(f.data.shape[0], -1).detach())
+                    else:
+                        compressed_features[k].append(f.data.view(f.shape[0], -1).detach())
                 
     else:
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
