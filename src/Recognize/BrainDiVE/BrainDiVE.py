@@ -17,6 +17,7 @@ class BrainDiVE(nn.Module):
         self.clip, _ = load(config.BRAINDIVE["clip_model"], self.device)
         self.clip_guidance_scale = float(config.BRAINDIVE["clip_guidance_scale"])
         self.weight = None
+        self.bias = None
         self.roi = None
         self.before_weight = None
         self.middle_image_save_root = config.BRAINDIVE["middle_image_save_root"]
@@ -26,18 +27,24 @@ class BrainDiVE(nn.Module):
 
 
     def load_weight(self, path):
-        self.weight = torch.from_numpy(np.load(path)).to(self.device).to(dtype=torch.float32)
-        self.before_weight = torch.from_numpy(np.load(path)).to(self.device).to(dtype=torch.float32)
+        self.weight = torch.load(path, map_location=self.device)['weight'].to(dtype=torch.float32)
+        self.bias = torch.load(path, map_location=self.device)['bias'].to(dtype=torch.float32)
+        self.before_bias = torch.load(path, map_location=self.device)['bias'].to(dtype=torch.float32)
+        self.before_weight = torch.load(path, map_location=self.device)['weight'].to(dtype=torch.float32)
+        # self.weight = torch.from_numpy(np.load(path)).to(self.device).to(dtype=torch.float32)
+        # self.before_weight = torch.from_numpy(np.load(path)).to(self.device).to(dtype=torch.float32)
         
 
     def load_roi(self, path):
-        self.roi = torch.from_numpy(np.loadtxt(path)).to(device=self.device)
-        self.weight = self.before_weight.T
+        self.roi = torch.from_numpy(np.loadtxt(path)).to(dtype=torch.float32).to(device=self.device)
+        self.weight = self.before_weight
+        self.bias = self.before_bias
         index = np.zeros(len(self.weight),dtype=bool)
         for i in range(len(index)):
             if self.roi[i] > 0:
                 index[i] = True
         self.weight = self.weight[index][:]
+        self.bias = self.bias[index]
         self.weight = self.weight.T
 
 
@@ -75,7 +82,8 @@ class BrainDiVE(nn.Module):
 
         image_embedding = self.clip.encode_image(normalized_image)
         image_embedding = image_embedding.to(dtype=torch.float32)
-        fMRI_prediction = image_embedding @ self.weight
+        image_embedding = image_embedding / torch.norm(image_embedding, dim=1, p=2)
+        fMRI_prediction = image_embedding @ self.weight + self.bias
         loss = fMRI_prediction.sum() / self.roi.sum() * clip_guidance_scale
         grads = -torch.autograd.grad(loss, latent_input, retain_graph=True)[0]
         image_grads = -torch.autograd.grad(loss, normalized_image)[0]
