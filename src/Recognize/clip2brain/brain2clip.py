@@ -146,10 +146,11 @@ class LinearBrain2CLIP:
         
 
         for _, each_layer in enumerate(target_layer):
-            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer))
-            training_data = torch.cat(training_data, dim=0)
-            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer))
-            valid_data = torch.cat(valid_data, dim=0)
+            training_data = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each_layer), map_location=self.device)
+            training_data = torch.cat(training_data, dim=0).to(dtype=self.dtype)
+            valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each_layer), map_location=self.device)
+            valid_data = torch.cat(valid_data, dim=0).to(dtype=self.dtype)
+
             self._change_linear_layer(training_data.shape[-1])
             for epoch in range(self.epochs):
                 new_lrate = self.lr * (self.lr_decay_rate ** (epoch / self.epochs))
@@ -165,8 +166,6 @@ class LinearBrain2CLIP:
                         batch_embedding = training_data[i * self.batch_size: (i + 1) * self.batch_size]
                     except:
                         batch_embedding = training_data[i * self.batch_size: ]
-
-                    batch_embedding = batch_embedding.to(self.device).detach().requires_grad_(False)
                     target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
                     # in some condition, subj haven't see several images, and the result is Nanm we need to process this condition
                     if torch.isnan(target).any():

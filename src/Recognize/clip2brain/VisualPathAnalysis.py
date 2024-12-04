@@ -88,12 +88,9 @@ class VisualPathAnalysis:
         
     def extract_similarity(self, *, subj=1, voxel_activation_roi="ventral_visual_pathway_roi", target_layer):
         self._initialize(subj=subj, voxel_activation_roi=voxel_activation_roi, target_layer=target_layer)
-        # the fMRI activation extracted
-        print(self.val_avg_activation.shape)
-        # the model embedding extracted
-        print(torch.cat(self.val_model_embedding, dim=0).shape)
-        # the target trained linear weight
-        print(self.target_weight.shape)
+        # the fMRI activation extracted: self.val_avg_activation
+        # the model embedding extracted: self.val_model_embedding
+        # the target trained linear weight: self.target_weight
         
         self.val_model_embedding = torch.cat(self.val_model_embedding, dim=0)
         # check if there is any nan value in the fMRI data
