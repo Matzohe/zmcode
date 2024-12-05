@@ -85,7 +85,7 @@ class BrainDiVE(nn.Module):
         image_embedding = image_embedding / torch.norm(image_embedding, dim=1, p=2)
         fMRI_prediction = image_embedding @ self.weight + self.bias
         loss = fMRI_prediction.sum() / self.roi.sum() * clip_guidance_scale
-        grads = -torch.autograd.grad(loss, latent_input, retain_graph=True)[0]
+        grads = torch.autograd.grad(loss, latent_input, retain_graph=True)[0]
         image_grads = -torch.autograd.grad(loss, normalized_image)[0]
         image_grads = ((torch.abs(image_grads) / torch.max(torch.abs(image_grads))).clamp(0, 1).data * 255).to(dtype=torch.uint8).detach().squeeze(0).permute(1, 2, 0).cpu().numpy().astype(np.uint8)
         del loss
