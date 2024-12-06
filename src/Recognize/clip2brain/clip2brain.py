@@ -3,7 +3,7 @@ from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
 from src.utils.utils import INIconfig, check_path
 from src.utils.r2_score import r2_score
 from utils.load_target_model import get_target_model
-from utils.extract_target_layer_function import decoding_extract_target_layer_output, extract_image_embedding
+from utils.extract_target_layer_function import decoding_extract_target_layer_output, encoding_extract_target_layer_output, extract_image_embedding
 from tqdm import tqdm
 import src.MultiModal.clip as clip
 import torch
@@ -222,6 +222,9 @@ class LinearClip2Brain:
             nan_embedding_list = (torch.isnan(self.same_avg_activation).sum(dim=-1) == 0)
             predict_activation = valid_output[nan_embedding_list]
             target = self.same_avg_activation[nan_embedding_list].to(device=self.device)
+        else:
+            target = self.same_avg_activation.to(device=self.device)
+            predict_activation = valid_output
 
         score = r2_score(target, predict_activation)
         r2_save_root = self.r2_save_root.format(subj, self.model_name, voxel_activation_roi)
@@ -245,8 +248,7 @@ class LinearClip2Brain:
             try:
                 _ = torch.load(self.middle_activation_save_root.format(subj, self.model_name, each))
             except:
-                raise RuntimeError("the target layer output extractor didn't perform normalization, please check it")
-                compressed_save_list = decoding_extract_target_layer_output(self.model, self.model_name, target_layer, 
+                compressed_save_list = encoding_extract_target_layer_output(self.model, self.model_name, target_layer, 
                                                                    self.training_dataloader, self.device, self.dtype)
                 for i, each in enumerate(target_layer):
                     torch.save(compressed_save_list[i], self.middle_activation_save_root.format(subj, self.model_name, each))
@@ -257,7 +259,7 @@ class LinearClip2Brain:
             try:
                 _ = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, each))
             except:
-                compressed_save_list = decoding_extract_target_layer_output(self.model, self.model_name, target_layer, 
+                compressed_save_list = encoding_extract_target_layer_output(self.model, self.model_name, target_layer, 
                                                                    self.val_dataloader, self.device, self.dtype)
                 for i, each in enumerate(target_layer):
                     torch.save(compressed_save_list[i], self.middle_same_activation_save_root.format(subj, self.model_name, each))

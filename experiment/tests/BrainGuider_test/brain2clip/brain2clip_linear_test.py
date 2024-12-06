@@ -1,5 +1,5 @@
 import torch
-from src.Recognize.clip2brain.brain2clip import LinearBrain2CLIP
+from src.Recognize.brain2clip.brain2clip import LinearBrain2CLIP
 from src.utils.utils import INIconfig
 
 def test_linear_brain2clip():
