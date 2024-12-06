@@ -112,7 +112,7 @@ def encoding_extract_target_layer_output(model: torch.nn.Module, model_name: str
 # extract the last layer image embeddings
 def extract_image_embedding(model: torch.nn.Module, dataloader: DataLoader, 
                             device: str, dtype: str) -> torch.Tensor:
-    if "clip" in model._get_name():
+    if "clip" in model._get_name() or "CLIP" in model._get_name():
           save_list = []
           for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
               with torch.no_grad():

@@ -33,6 +33,10 @@ def get_target_model(model_name: str, device: str) -> Tuple[torch.nn.Module, cal
     elif model_name == "clip_ViT-B_32":
         target_model ,preprocess=clip.load("ViT-B/32",device=device)
         target_model.eval()
+        
+    elif model_name == "clip_ViT-B_16":
+        target_model ,preprocess=clip.load("ViT-B/16",device=device)
+        target_model.eval()
 
     else:
         raise ValueError("Target model {} not supported".format(model_name))
