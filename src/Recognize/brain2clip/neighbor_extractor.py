@@ -38,13 +38,12 @@ def extract_neighbors(mask: np.ndarray,
     return Q
 
 def seed_point_search(*, 
-                          mask,
-                          seed_point,
-                          target_model_embedding, 
-                          fMRI_activation,
-                          coodinate2index, 
-                          is_eight_neighbors=False, 
-                          ) -> torch.tensor:
+                      mask,
+                      seed_point,
+                      target_model_embedding, 
+                      fMRI_activation,coodinate2index, 
+                      is_eight_neighbors=False, 
+                      ) -> torch.tensor:
     current_activation = torch.zeros_like(target_model_embedding)
     current_activation += fMRI_activation[coodinate2index[seed_point]]
 
