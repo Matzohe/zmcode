@@ -59,7 +59,7 @@ class LinearBrain2CLIP:
         self.linear_layer = None
         self.optimizer = None
         
-    def _initialize(self, subj=1, voxel_activation_roi="SELECTIVE_ROI"):
+    def _initialize(self, subj=1, voxel_activation_roi="ventral_visual_pathway_roi"):
 
         self.model_name = self.config.IMAGE_EMBEDDING['model_name'].replace("/", "-")
         
@@ -110,7 +110,7 @@ class LinearBrain2CLIP:
         self.training_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.training_image_root_list, image_transform=self.model_transform)
         self.val_dataloader = get_root_list_dataloader(batch_size=self.batch_size, image_root_list=self.val_image_root_list, image_transform=self.model_transform)
 
-    def target_layer_linear_fitting(self, subj=1, voxel_activation_roi="SELECTIVE_ROI", target_layer=None, summary_writer=None):
+    def target_layer_linear_fitting(self, subj=1, voxel_activation_roi="ventral_visual_pathway_roi", target_layer=None, summary_writer=None):
         if target_layer is None:
             raise ValueError("target_layer can't be None")
         elif isinstance(target_layer, str):

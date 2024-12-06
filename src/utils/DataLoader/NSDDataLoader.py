@@ -40,6 +40,8 @@ class NSDDataset:
         self.zscore_activation_ev_save_root = config.NSD['zscore_activation_ev_save_root']
         self.nonzscore_avg_activation_save_root = config.NSD['nonzscore_avg_activation_save_root']
         self.nonzscore_activation_ev_save_root = config.NSD['nonzscore_activation_ev_save_root']
+        self.mask_coordinate_save_root = config.NSD['mask_coordinate_save_root']
+        self.unflattened_mask_save_root = config.NSD['unflattened_mask_save_root']
 
         self.pure_response_save_root = config.NSD['pure_response_save_root']
     
@@ -166,14 +168,17 @@ class NSDDataset:
             general_mask_root = self.general_mask_root
             general_mask_root = general_mask_root.format(subj)
             general_mask = nib.load(general_mask_root).get_fdata()
-            general_mask = general_mask > -1
+            new_general_mask = general_mask > -1
 
             if save:
                 save_path = self.general_mask_save_root.format(subj, roi_name)
+                unflattened_save_path = self.unflattened_mask_save_root.format(subj, roi_name)
                 check_path(save_path)
-                torch.save(general_mask, save_path)
+                check_path(unflattened_save_path)
+                torch.save(new_general_mask, save_path)
+                torch.save(general_mask, unflattened_save_path)
 
-            return general_mask
+            return new_general_mask, general_mask
         
         else:
             general_mask_root = self.general_mask_root.format(subj)
@@ -190,12 +195,15 @@ class NSDDataset:
             if save:
                 save_path = self.roi_mask_save_root.format(subj, roi_name)
                 cortical_path = self.general_mask_save_root.format(subj, roi_name)
+                unflattened_save_path = self.unflattened_mask_save_root.format(subj, roi_name)
                 check_path(save_path)
                 check_path(cortical_path)
+                check_path(unflattened_save_path)
                 torch.save(roi_1d_mask, save_path)
                 torch.save(new_roi_mask, cortical_path)
+                torch.save(roi_mask, unflattened_save_path)
 
-            return new_roi_mask
+            return new_roi_mask, roi_mask
 
     def load_roi_mask(self,
                       subj: int,
@@ -203,11 +211,65 @@ class NSDDataset:
                       ) -> np.ndarray:
         save_path = self.roi_mask_save_root.format(subj, roi_name)
         try:
+            mask, _ = torch.load(save_path)
+        except:
+            print("extracting roi mask")
+            mask, _ = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
+        return mask
+
+    def load_unflattened_mask(self,
+                              subj: int,
+                              roi_name: str = ""
+                              ) -> np.ndarray:
+        save_path = self.unflattened_mask_save_root.format(subj, roi_name)
+        try:
             mask = torch.load(save_path)
         except:
             print("extracting roi mask")
-            mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
+            _, mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
         return mask
+
+    # for each selected voxel, we need to extract it's actual coordinate
+    def extract_mask_coordinate(self,
+                                subj: int,
+                                roi_name: str = "",
+                                save=True
+                                ) -> torch.tensor:
+        try:
+            mask = torch.load(self.unflattened_mask_save_root.format(subj, roi_name))
+        except:
+            _, mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
+        
+        data = torch.ones_like(torch.from_numpy(mask))
+        coodinate = torch.zeros(size=((mask > 0).sum(), 3))
+        num = 0
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                for k in range(data.shape[2]):
+                    if mask[i, j, k] > 0:
+                        coodinate[num, 0] = i
+                        coodinate[num, 1] = j
+                        coodinate[num, 2] = k
+                        num += 1
+        coodinate = coodinate.int().tolist()
+        if save:
+            save_path = self.mask_coordinate_save_root.format(subj, roi_name)
+            check_path(save_path)
+            torch.save(coodinate, save_path)
+
+        return coodinate
+
+    def load_mask_coordinate(self,
+                             subj: int,
+                             roi_name: str = ""
+                             ) -> torch.tensor:
+        save_path = self.mask_coordinate_save_root.format(subj, roi_name)
+        try:
+            coodinate = torch.load(save_path)
+        except:
+            print("extracting mask coordinate")
+            coodinate = self.extract_mask_coordinate(subj=subj, roi_name=roi_name, save=True)
+        return coodinate
 
     # Get the voxal response for a certain subject, get voxal responses for the subj and the target roi, for all 40 sessions
     # meanwhile, choose to process zscore process
@@ -220,7 +282,7 @@ class NSDDataset:
         try:
             mask = torch.load(self.general_mask_save_root.format(subj, roi_name))
         except:
-            mask = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
+            mask, _ = self.extract_roi_mask(subj=subj, roi_name=roi_name, save=True)
         
         mask = check_tensor(mask)
 
