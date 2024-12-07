@@ -43,15 +43,17 @@ def seed_point_search(*,
                       target_model_embedding, 
                       fMRI_activation,coodinate2index, 
                       is_eight_neighbors=False, 
+                      dtype=torch.float64
                       ) -> torch.tensor:
-    current_activation = torch.zeros_like(target_model_embedding)
-    current_activation += fMRI_activation[coodinate2index[seed_point]]
+    current_activation = torch.zeros_like(target_model_embedding).to(dtype=dtype)
+    current_activation += fMRI_activation[coodinate2index[seed_point]].to(dtype=dtype)
 
     voxel_selected_time_list = torch.zeros(size=(fMRI_activation.shape[0], ))
     voxel_selected_time_list[coodinate2index[seed_point]] = 1
     is_find_list = torch.zeros(size=mask.shape).to(dtype=torch.bool)
     is_find_list[seed_point[0], seed_point[1], seed_point[2]] = True
 
+    target_model_embedding = target_model_embedding.to(dtype=dtype)
     serch_Q = queue.Queue()
     serch_Q.put(seed_point)
     
@@ -62,9 +64,8 @@ def seed_point_search(*,
         while not neighbor_Q.empty():
             neighbor_point = neighbor_Q.get()
             new_activation = current_activation + fMRI_activation[coodinate2index[neighbor_point]]
-            if torch.norm(new_activation - target_model_embedding) < torch.norm(current_activation - target_model_embedding):
+            if (new_activation * target_model_embedding).sum() > 0 and torch.norm(new_activation - target_model_embedding) < torch.norm(current_activation - target_model_embedding):
                 current_activation = new_activation
                 serch_Q.put(neighbor_point)
                 voxel_selected_time_list[coodinate2index[neighbor_point]] = 1
-
     return voxel_selected_time_list

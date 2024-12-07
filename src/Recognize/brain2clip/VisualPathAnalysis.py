@@ -55,13 +55,13 @@ class VisualPathAnalysis:
     def _initialize(self, *, subj=1, voxel_activation_roi="ventral_visual_pathway_roi", target_layer):
         # extract the target layer's trained linear weight
         try:
-            model_state_dict = torch.load(self.middle_layer_linear_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi))
+            model_state_dict = torch.load(self.middle_layer_linear_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi), map_location=self.device)
             self.target_weight = model_state_dict["weight"]
         except:
             raise ValueError("No such file or directory: '{}'".format(self.middle_layer_linear_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi)))
         # extract the target layer's embeddings
         try:
-            self.val_model_embedding = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi))
+            self.val_model_embedding = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi), map_location=self.device)
         except:
             raise ValueError("No such file or directory: '{}'".format(self.middle_same_activation_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi)))
 
