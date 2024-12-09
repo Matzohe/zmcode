@@ -11,9 +11,40 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.multiprocessing as mp
+import time
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import os
+
+
+def update_progress(total_number, finish_number):
+    with tqdm(total=total_number) as pbar:
+        while finish_number.value < total_number:
+            pbar.n = finish_number.value  # 更新进度条位置
+            pbar.refresh()
+            time.sleep(0.1)
+
+
+def _process_voxel(i, lock, target_image_model_embedding, 
+                target_fMRI_activation, target_output, index2coodinate, 
+                coodinate2index, roi_mask, is_eight_neighbors, finish_number):
+    """
+    i: index of the voxel
+    """
+    seed_point = index2coodinate[i]
+    seed_point_count = seed_point_search(
+        mask=roi_mask,
+        seed_point=seed_point,
+        target_model_embedding=target_image_model_embedding,
+        fMRI_activation=target_fMRI_activation,
+        coodinate2index=coodinate2index,
+        is_eight_neighbors=is_eight_neighbors
+    )
+    with lock:
+        target_output += seed_point_count.to(device="cpu")
+        finish_number.value += 1
+
 
 class VisualPathAnalysis:
     def __init__(self, config):
@@ -78,7 +109,7 @@ class VisualPathAnalysis:
         for i in range(len(voxel_coodinate)):
             self.index2coodinate[i] = (voxel_coodinate[i][0], voxel_coodinate[i][1], voxel_coodinate[i][2])
             self.coodinate2index[(voxel_coodinate[i][0], voxel_coodinate[i][1], voxel_coodinate[i][2])] = i
-            
+
         self.individual_bool_list, self.same_bool_list = self.dataset.load_individual_and_same_image_bool(subj)
         # we only need the valid data here
         self.val_avg_activation = avg_activation[self.same_bool_list].to(self.device)
@@ -151,3 +182,50 @@ class VisualPathAnalysis:
         save_path = self.similarity_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi)
         check_path(save_path)
         torch.save(similarity_list, save_path)
+
+    def multi_process_extract_target_voxels(self, *, subj=1, voxel_activation_roi="ventral_visual_pathway_roi", 
+                                            target_layer, target_image_id=0, process_num=-1):
+        if process_num == -1:
+            process_num = mp.cpu_count()
+        self._initialize(subj=subj, voxel_activation_roi=voxel_activation_roi, target_layer=target_layer)
+
+        self.val_model_embedding = torch.cat(self.val_model_embedding, dim=0)
+        
+        if torch.isnan(self.val_avg_activation).any():
+            nan_embedding_list = (torch.isnan(self.val_avg_activation).sum(dim=-1) == 0)
+            self.val_model_embedding = self.val_model_embedding[nan_embedding_list]
+            self.val_avg_activation = self.val_avg_activation[nan_embedding_list]
+
+        self.val_avg_activation = self.val_avg_activation / torch.norm(self.val_avg_activation, dim=-1, keepdim=True)
+        self.val_avg_activation = self.val_avg_activation.cpu()
+        target_image_model_embedding = self.val_model_embedding[target_image_id].cpu()
+        target_fMRI_signal = self.val_avg_activation[target_image_id].view(-1)
+        target_fMRI_activation = (target_fMRI_signal * self.target_weight.cpu()).T
+        target_output = torch.zeros_like(target_fMRI_signal).to(device='cpu')
+        roi_mask = torch.from_numpy(self.roi_mask)
+        is_eight_neighbors = self.is_eight_neighbors
+
+        # make the share memory
+        target_image_model_embedding.share_memory_()
+        target_fMRI_activation.share_memory_()
+        target_output.share_memory_()
+        roi_mask.share_memory_()
+
+        with mp.Manager() as manager:
+
+            index2coodinate = manager.dict()
+            coodinate2index = manager.dict()
+            finish_number = manager.Value('i', 0)
+            index2coodinate.update(self.index2coodinate)
+            coodinate2index.update(self.coodinate2index)
+            lock = manager.Lock()
+            bar_process = mp.Process(target=update_progress, args=(len(target_fMRI_signal), finish_number))
+            bar_process.start()
+            with mp.Pool(processes=process_num) as pool:
+                pool.starmap(func=_process_voxel, iterable=[(i, lock, target_image_model_embedding, 
+                                                           target_fMRI_activation, target_output, index2coodinate, 
+                                                           coodinate2index, roi_mask, is_eight_neighbors, finish_number) 
+                                                           for i in range(len(target_fMRI_signal))])
+            bar_process.join()
+
+        return target_output

@@ -151,9 +151,9 @@ class LinearClip2Brain:
                 except:
                     batch_embedding = training_data[i * self.batch_size: ]
 
-                batch_embedding = batch_embedding.to(self.device)
+                batch_embedding = batch_embedding.to(self.device).to(dtype=self.dtype)
                 predict_activation = self.linear_layer(batch_embedding)
-                target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device).to(dtype=self.dtype)
                 # in some condition, subj haven't see several images, and the result is Nanm we need to process this condition
                 if torch.isnan(target).any():
                     nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
@@ -181,11 +181,11 @@ class LinearClip2Brain:
                     except:
                         batch_embedding = valid_data[i * self.batch_size: ]
 
-                    batch_embedding = batch_embedding.to(self.device)
+                    batch_embedding = batch_embedding.to(self.device).to(dtype=self.dtype)
 
                     predict_activation = self.linear_layer(batch_embedding)
 
-                    target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                    target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device).to(dtype=self.dtype)
                     if torch.isnan(target).any():
                         nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
                         predict_activation = predict_activation[nan_embedding_list]
@@ -216,14 +216,14 @@ class LinearClip2Brain:
 
         self.linear_layer.load_state_dict(model_state_dict)
         
-        valid_data = torch.load(self.image_same_activation_save_root.format(subj, self.model_name)).to(self.device)
+        valid_data = torch.load(self.image_same_activation_save_root.format(subj, self.model_name)).to(self.device).to(dtype=self.dtype)
         valid_output = self.linear_layer(valid_data)
         if torch.isnan(self.same_avg_activation).any():
             nan_embedding_list = (torch.isnan(self.same_avg_activation).sum(dim=-1) == 0)
             predict_activation = valid_output[nan_embedding_list]
-            target = self.same_avg_activation[nan_embedding_list].to(device=self.device)
+            target = self.same_avg_activation[nan_embedding_list].to(device=self.device).to(dtype=self.dtype)
         else:
-            target = self.same_avg_activation.to(device=self.device)
+            target = self.same_avg_activation.to(device=self.device).to(dtype=self.dtype)
             predict_activation = valid_output
 
         score = r2_score(target, predict_activation)
@@ -289,9 +289,9 @@ class LinearClip2Brain:
                     except:
                         batch_embedding = training_data[i * self.batch_size: ]
 
-                    batch_embedding = batch_embedding.to(self.device)
+                    batch_embedding = batch_embedding.to(self.device).to(dtype=self.dtype)
                     predict_activation = self.linear_layer(batch_embedding)
-                    target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                    target = self.individual_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device).to(dtype=self.dtype)
                     # in some condition, subj haven't see several images, and the result is Nanm we need to process this condition
                     if torch.isnan(target).any():
                         nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
@@ -319,11 +319,11 @@ class LinearClip2Brain:
                         except:
                             batch_embedding = valid_data[i * self.batch_size: ]
 
-                        batch_embedding = batch_embedding.to(self.device)
+                        batch_embedding = batch_embedding.to(self.device).to(dtype=self.dtype)
 
                         predict_activation = self.linear_layer(batch_embedding)
 
-                        target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device)
+                        target = self.same_avg_activation[i * self.batch_size: i * self.batch_size + batch_embedding.shape[0]].to(self.device).to(dtype=self.dtype)
                         if torch.isnan(target).any():
                             nan_embedding_list = (torch.isnan(target).sum(dim=-1) == 0)
                             predict_activation = predict_activation[nan_embedding_list]
@@ -352,13 +352,15 @@ class LinearClip2Brain:
 
         self.linear_layer.load_state_dict(model_state_dict)
         
-        valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, target_layer)).to(device=self.device)
+        valid_data = torch.load(self.middle_same_activation_save_root.format(subj, self.model_name, target_layer)).to(device=self.device).to(dtype=self.dtype)
         valid_output = self.linear_layer(valid_data)
         if torch.isnan(self.same_avg_activation).any():
             nan_embedding_list = (torch.isnan(self.same_avg_activation).sum(dim=-1) == 0)
             predict_activation = valid_output[nan_embedding_list]
-            target = self.same_avg_activation[nan_embedding_list].to(device=self.device)
-
+            target = self.same_avg_activation[nan_embedding_list].to(device=self.device).to(dtype=self.dtype)
+        else:
+            predict_activation = valid_output
+            target = self.same_avg_activation.to(device=self.device).to(dtype=self.dtype)
         score = r2_score(target, predict_activation)
         r2_save_root = self.middle_layer_r2_save_root.format(subj, self.model_name, target_layer, voxel_activation_roi)
         check_path(r2_save_root)
