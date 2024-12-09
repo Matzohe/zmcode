@@ -12,7 +12,6 @@ import random
 # if want to use it, need a check
 
 def shuffle_shift(input_image: torch.Tensor, extent=4) -> torch.Tensor:
-    assert input_image.dim == 4, "input image should be a 4D tensor, with a dimention of batch size"
     offset_x = random.randint(-extent, extent)
     offset_y = random.randint(-extent, extent)
     orig_shape = input_image.shape

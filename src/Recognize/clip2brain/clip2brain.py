@@ -2,8 +2,8 @@ from src.utils.DataLoader.NSDDataLoader import NSDDataset
 from src.utils.DataLoader.RootListDataLoader import get_root_list_dataloader
 from src.utils.utils import INIconfig, check_path
 from src.utils.r2_score import r2_score
-from utils.load_target_model import get_target_model
-from utils.extract_target_layer_function import decoding_extract_target_layer_output, encoding_extract_target_layer_output, extract_image_embedding
+from .utils.load_target_model import get_target_model
+from .utils.extract_target_layer_function import decoding_extract_target_layer_output, encoding_extract_target_layer_output, extract_image_embedding
 from tqdm import tqdm
 import src.MultiModal.clip as clip
 import torch
