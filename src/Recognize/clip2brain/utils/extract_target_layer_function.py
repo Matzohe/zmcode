@@ -5,6 +5,20 @@ import torchextractor as tx
 from typing import List
 from tqdm import tqdm
 import numpy as np
+import random
+
+# didudidu~ while process the encoding image, andrew luo give an augmentation to the input image
+# which has been added to the encoding_extract_target_layer_output
+# if want to use it, need a check
+
+def shuffle_shift(input_image: torch.Tensor, extent=4) -> torch.Tensor:
+    assert input_image.dim == 4, "input image should be a 4D tensor, with a dimention of batch size"
+    offset_x = random.randint(-extent, extent)
+    offset_y = random.randint(-extent, extent)
+    orig_shape = input_image.shape
+    temp = input_image[:,:, max(0,offset_x):min(orig_shape[2], orig_shape[2]+offset_x), max(0,offset_y):min(orig_shape[3], orig_shape[3]+offset_y)]
+    temp = torch.nn.functional.pad(temp, (max(0, -offset_y),max(0,offset_y), max(0, -offset_x), max(0,offset_x)), mode='replicate')
+    return temp
 
 
 # extract target layer's output with the help of torchextractor
@@ -65,6 +79,7 @@ def encoding_extract_target_layer_output(model: torch.nn.Module, model_name: str
     if "clip" in model_name:
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
             with torch.no_grad():
+                images = (shuffle_shift(images) + torch.randn_like(images)*0.05)
                 text_embedding = torch.randint(size=(images.shape[0], 77), low=0, high=1000).to(device=device)
                 _, image_features = model_visual(images.to(device=device), text_embedding)
             
@@ -88,6 +103,7 @@ def encoding_extract_target_layer_output(model: torch.nn.Module, model_name: str
     else:
         for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
             with torch.no_grad():
+                images = (shuffle_shift(images) + torch.randn_like(images)*0.05)
                 _, image_features = model_visual(images.to(device=device)).to(dtype=dtype)
 
             for k, f in enumerate(image_features.values()):
@@ -116,6 +132,7 @@ def extract_image_embedding(model: torch.nn.Module, dataloader: DataLoader,
           save_list = []
           for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
               with torch.no_grad():
+                  images = (shuffle_shift(images) + torch.randn_like(images)*0.05)
                   image_embeddings = model.encode_image(images.to(device)).to(dtype=dtype)
                   image_embeddings = image_embeddings / torch.norm(image_embeddings, dim=-1, keepdim=True)
               save_list.append(image_embeddings.detach().cpu())
@@ -126,6 +143,7 @@ def extract_image_embedding(model: torch.nn.Module, dataloader: DataLoader,
          save_list = []
          for _, images in tqdm(enumerate(dataloader), total=len(dataloader)):
              with torch.no_grad():
+                 images = (shuffle_shift(images) + torch.randn_like(images)*0.05)
                  image_embeddings = model(images.to(device=device)).to(dtype=dtype)
                  image_embeddings = image_embeddings / torch.norm(image_embeddings, dim=-1, keepdim=True)
              save_list.append(image_embeddings.detach().cpu())
