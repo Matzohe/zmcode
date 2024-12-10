@@ -78,7 +78,7 @@ def seed_point_search(*,
         dtype (_type_, optional): Defaults to torch.float64, the data type
 
     Returns:
-        torch.tensor: a list that save the information of which voxel has been selected
+        torch.tensor: a list that save the information of which voxel has been selec
     """
     current_activation = torch.zeros_like(target_model_embedding).to(dtype=dtype)
     current_activation += fMRI_activation[coodinate2index[seed_point]].to(dtype=dtype)
