@@ -140,7 +140,7 @@ class CLIP(nn.Module):
     def forward(self, image, text=None):
         if text is None:
             text = torch.zeros((image.shape[0], 77), dtype=torch.int64).to(image.device)
-            raise Warning("the clip text input is None")
+
         image_features = self.encode_image(image)
         text_features = self.encode_text(text)
 

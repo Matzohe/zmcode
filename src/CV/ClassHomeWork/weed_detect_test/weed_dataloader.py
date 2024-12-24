@@ -22,15 +22,19 @@ class weed_dataset(Dataset):
     def __getitem__(self, index):
         with open(self.json_files[index], 'r') as f:
             json_data = json.load(f)
+        # process the special imagepath in the config file
+        json_info_path = json_data['imagePath']
+        if '/' in json_info_path:
+            json_info_path = json_info_path.split('/')[-1]
+        img_path = os.path.join(self.weed_image_root, json_info_path)
 
-        img_path = os.path.join(self.weed_image_root, json_data['imagePath'])
         info_list = []
         for each in json_data['shapes']:
             points = each['points']
-            info_list.append(((int(points[0][0] + 0.5), int(points[0][1] + 0.5)), int(math.dist(points[0], points[1]) + 0.5)))
+            info_list.append(((int(points[0][1] + 0.5), int(points[0][0] + 0.5)), int(math.dist(points[0], points[1]) + 0.5)))
 
         return img_path, info_list
 
     def __len__(self):
-        len(self.json_files)
+        return len(self.json_files)
 
