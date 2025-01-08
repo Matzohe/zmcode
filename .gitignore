@@ -11,6 +11,7 @@ experiment/output/
 experiment/ModelParams
 new_test.py
 doc/NLP/ClassHomework/
+doc/resume
 embedding_weight.pt
 src/RL/ClassHomework/third_experiment_part_2
 doc/RL/ClassHomework
