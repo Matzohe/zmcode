@@ -100,6 +100,7 @@ class Attention(torch.nn.Module):
         super().__init__()
         self.device = args.device
         self.n_heads = args.n_heads
+        self.args = args
         self.kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
 
         assert args.dim % args.n_heads == 0
@@ -119,7 +120,7 @@ class Attention(torch.nn.Module):
             size=(args.max_batch_size, args.max_seq_len, self.kv_heads, self.head_dim),
         ).to(self.device)
 
-        # self.gate = torch.nn.Parameter(torch.zeros(1, self.n_heads, 1, 1))
+        self.gate = torch.nn.Parameter(torch.zeros(1, self.n_heads, 1, 1))
 
     def train(self, mode: bool = True):
         if mode:
@@ -127,11 +128,11 @@ class Attention(torch.nn.Module):
             self.cache_v = None
         else:
             self.cache_k = torch.zeros(
-                (self.args.max_batch_size, self.args.max_seq_len, self.n_local_heads, self.head_dim)
-            ).cuda()
+                (self.args.max_batch_size, self.args.max_seq_len, self.n_heads, self.head_dim)
+            ).to(device=self.device)
             self.cache_v = torch.zeros(
-                (self.args.max_batch_size, self.args.max_seq_len, self.n_local_heads, self.head_dim)
-            ).cuda()
+                (self.args.max_batch_size, self.args.max_seq_len, self.n_heads, self.head_dim)
+            ).to(device=self.device)
         return super().train(mode)
 
     def forward(
@@ -178,7 +179,7 @@ class Attention(torch.nn.Module):
         output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
         if adapter is not None:
             adapter_scores = torch.matmul(xq, adapter_k.transpose(2, 3)) / math.sqrt(self.head_dim)
-            adapter_scores = F.softmax(adapter_scores.float(), dim=-1).type_as(xq)
+            adapter_scores = self.gate * F.softmax(adapter_scores.float(), dim=-1).type_as(xq)
             output = output + torch.matmul(adapter_scores, adapter_v)
         output = output.transpose(1, 2).contiguous().view(bsz, sql, -1)
 

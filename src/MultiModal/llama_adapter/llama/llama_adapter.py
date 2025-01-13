@@ -10,6 +10,7 @@ import os
 import json
 from pathlib import Path
 from timm.models.vision_transformer import Block
+import time
 
 
 class LlamaAdapter(nn.Module):
@@ -71,10 +72,13 @@ class LlamaAdapter(nn.Module):
         self.llama = Transformer(model_args)
         torch.set_default_dtype(torch.float32)
 
-        # ckpts = sorted(Path(llama_ckpt_dir).glob("*.pth"))
-        # for ckpt in ckpts:
-        #     ckpt = torch.load(ckpt, map_location='cpu')
-        #     self.llama.load_state_dict(ckpt, strict=False)
+        start_time = time.time()
+        ckpts = sorted(Path(llama_ckpt_dir).glob("*.pth"))
+        for ckpt in ckpts:
+            ckpt = torch.load(ckpt, map_location='cpu')
+            self.llama.load_state_dict(ckpt, strict=False)
+        
+        print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
         del self.clip.transformer
 
@@ -246,9 +250,7 @@ class LlamaAdapter(nn.Module):
         params = self.llama.params
         assert bsz <= params.max_batch_size, (bsz, params.max_batch_size)
         assert len(imgs) == len(prompts)
-
-        with torch.cuda.amp.autocast():
-            visual_query = self.forward_visual(imgs)
+        visual_query = self.forward_visual(imgs)
 
         if isinstance(prompts[0], str):
             prompts = [self.tokenizer.encode(x, bos=True, eos=False) for x in prompts]
@@ -258,16 +260,15 @@ class LlamaAdapter(nn.Module):
 
         total_len = min(params.max_seq_len, max_gen_len + max_prompt_size)
 
-        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).cuda().long()
+        tokens = torch.full((bsz, total_len), self.tokenizer.pad_id).long().to(device=imgs.device)
 
         for k, t in enumerate(prompts):
-            tokens[k, : len(t)] = torch.tensor(t).cuda().long()
+            tokens[k, : len(t)] = torch.tensor(t).long().to(device=imgs.device)
         input_text_mask = tokens != self.tokenizer.pad_id
         start_pos = min_prompt_size
         prev_pos = 0
         for cur_pos in range(start_pos, total_len):
-            with torch.cuda.amp.autocast():
-                logits = self.forward_inference(visual_query, tokens[:, prev_pos:cur_pos], prev_pos)
+            logits = self.forward_inference(visual_query, tokens[:, prev_pos:cur_pos], prev_pos)
             if temperature > 0:
                 probs = torch.softmax(logits / temperature, dim=-1)
                 next_token = sample_top_p(probs, top_p)

@@ -97,26 +97,27 @@ def train_one_epoch(model: LlamaAdapter,
     optimizer.zero_grad()
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0).to(device=device)
     loss_scaler = NativeScaler()
+    loss_sum = 0
     for data_iter_step, (examples, labels, example_mask, imgs) in tqdm(enumerate(data_loader), total=len(data_loader)):
         # we use a per iteration (instead of per epoch) lr scheduler
-        if data_iter_step % accum_iter == 0:
-            adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, 
-                                 warmup_epochs=warmup_epochs, lr=lr, min_lr=min_lr, epochs=epochs)
         imgs = imgs.to(device=device)
         examples = examples.to(device=device)
         labels = labels.to(device=device)
 
         model_output = model(examples, imgs)
         loss = criterion(model_output.view(-1, model_output.shape[-1]), labels[:, 1:].view(-1))
+        loss = loss / accum_iter
+        loss_sum += loss.item()
         loss_scaler(loss, optimizer, parameters=model.parameters(),
                     update_grad=(data_iter_step + 1) % accum_iter == 0)
         if (data_iter_step + 1) % accum_iter == 0:
             optimizer.zero_grad()
-            break
+            if summary_writer is not None:
+                summary_writer.add_scalar("loss", loss_sum, data_iter_step + epoch * len(data_loader))
+            loss_sum = 0
+    torch.save(model.state_dict(), "experiment/output/llama_adapter/adapter_param_{}.pt".format(epoch))
 
-        if summary_writer is not None:
-            summary_writer.add_scalar("loss", loss.item(), data_iter_step)
-        
+    
 
 
 def add_weight_decay(model, weight_decay=1e-5, skip_list=()):
@@ -150,9 +151,8 @@ def train(config_path,
     summary_writer = SummaryWriter()
 
     for epoch in range(int(config.TRAIN['epochs'])):
-        train_one_epoch(model, training_dataloader, optimizer, device, epoch, 
+        train_one_epoch(model, training_dataloader, optimizer, device, epoch=epoch, 
                         warmup_epochs=int(config.TRAIN['warmup_epochs']), lr=float(config.TRAIN['lr']), 
                         min_lr=float(config.TRAIN['min_lr']), epochs=int(config.TRAIN['epochs']), 
                         summary_writer=summary_writer)
-        break
-    torch.save(model.state_dict(), "experiment/output/llama_adapter/adapter_param.pt")
+    

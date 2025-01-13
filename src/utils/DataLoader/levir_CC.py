@@ -30,6 +30,48 @@ def format_prompt(instruction, input=None):
         return PROMPT_DICT["prompt_input"].format_map({'instruction': instruction, 'input': input})
 
 
+class levirTestDataset(Dataset):
+    def __init__(self, json_root, image_root, max_len, llama_token_dir, clip_model):
+        clip_model, self.img_preprocess = clip.load(clip_model, device="cpu")
+        del clip_model
+
+        with open(json_root, "r") as f:
+            self.data = json.load(f)["images"]
+        self.image_path_list = []
+        self.image_discription = {}
+        self.max_len = max_len
+        self.tokenizer = Tokenizer(llama_token_dir)
+        for each in self.data:
+            if each["split"] != "test":
+                continue
+            img_path = os.path.join(image_root, each["filepath"], "A", each["filename"])
+            self.image_path_list.append(img_path)
+            sentence = each["sentences"]
+            sentence_list = []
+            for sent in sentence:
+                sentence_list.append(sent["raw"][1:])
+            self.image_discription[img_path] = sentence_list
+
+
+    def __len__(self):
+        return len(self.image_path_list)
+
+    def __getitem__(self, index):
+        img_path = self.image_path_list[index]
+        img = cv2.imread(img_path)
+        img = Image.fromarray(img)
+        img = self.img_preprocess(img)
+        format_instruction = "Generate caption of this image"
+        input1 = format_prompt(format_instruction, None)
+        sentence = self.image_discription[img_path]
+        if len(sentence) > 1:
+            sentence = random.choice(sentence)
+        else:
+            sentence = sentence[0]
+        input1 = torch.tensor(self.tokenizer.encode(input1, bos=True, eos=False), dtype=torch.int64)
+        
+        return input1, img, sentence, img_path
+
 
 class levirDataset(Dataset):
     def __init__(self, json_root, image_root, max_len, llama_token_dir, clip_model):
