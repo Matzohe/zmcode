@@ -22,7 +22,7 @@ def generate_captions(config_path, max_seq_len=128,
     model = LlamaAdapter(config.LLAMA['llama_ckpt_dir'], config.LLAMA['llama_tokenizer'], 
                          max_seq_len=max_seq_len, max_batch_size=max_batch_size, phase=phase, device=device, 
                          clip_model=clip_model)
-    state_dict = torch.load("experiment/output/llama_adapter/adapter_param_0.pt")
+    state_dict = torch.load("experiment/output/llama_adapter/adapter_param_2.pt")
     model.load_state_dict(state_dict)
     model.train(False)
     model.to(device)
@@ -35,13 +35,13 @@ def generate_captions(config_path, max_seq_len=128,
         ["pre discription", "generated discription", "img path"],
     ]
 
-    for i, (examples, imgs, sentence, img_path) in tqdm(enumerate(test_dataloader), total=len(test_dataloader)):
+    for i, (examples, imgs, imgs_B, sentence, img_path) in tqdm(enumerate(test_dataloader), total=len(test_dataloader)):
         examples = examples.to(device=device)
         imgs = imgs.to(device=device)
+        imgs_B = imgs_B.to(device=device)
+        imgs = torch.cat((imgs, imgs_B), 1)
         decoding = model.generate(imgs, examples, max_generation_len)
         data.append([sentence, decoding[0], img_path])
-        if i > 100:
-            break
 
     with open("experiment/output/llama_adapter/generation.csv", "w") as f:
         writer = csv.writer(f)

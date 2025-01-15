@@ -98,11 +98,17 @@ def train_one_epoch(model: LlamaAdapter,
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0).to(device=device)
     loss_scaler = NativeScaler()
     loss_sum = 0
-    for data_iter_step, (examples, labels, example_mask, imgs) in tqdm(enumerate(data_loader), total=len(data_loader)):
+    for data_iter_step, (examples, labels, example_mask, imgs_A, imgs_B) in tqdm(enumerate(data_loader), total=len(data_loader)):
+        if data_iter_step % accum_iter == 0:
+            adjust_learning_rate(optimizer, (epoch * len(data_loader) + data_iter_step)  // accum_iter, 
+                                 warmup_epochs * len(data_loader) // accum_iter, 
+                                 lr, min_lr, epochs * len(data_loader) // accum_iter)
         # we use a per iteration (instead of per epoch) lr scheduler
-        imgs = imgs.to(device=device)
+        imgs_A = imgs_A.to(device=device)
+        imgs_B = imgs_B.to(device=device)
         examples = examples.to(device=device)
         labels = labels.to(device=device)
+        imgs = torch.cat((imgs_A, imgs_B), 1)
 
         model_output = model(examples, imgs)
         loss = criterion(model_output.view(-1, model_output.shape[-1]), labels[:, 1:].view(-1))

@@ -141,7 +141,12 @@ class LlamaAdapter(nn.Module):
 
     def forward_visual(self, imgs):
         with torch.no_grad():
-            clip_feats = self.clip_encode_image(imgs.to(device=self.device))
+            if imgs.shape[1] == 6:
+                imgs_A = imgs[:, :3]
+                imgs_B = imgs[:, 3:]
+                clip_feats = self.clip_encode_image(imgs_A.to(device=self.device)) - self.clip_encode_image(imgs_B.to(device=self.device))
+            else:
+                clip_feats = self.clip_encode_image(imgs.to(device=self.device))
         
         clip_feats = self.clip_proj_norm(self.clip_proj(clip_feats.float()))
 

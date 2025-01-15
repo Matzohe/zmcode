@@ -38,6 +38,7 @@ class levirTestDataset(Dataset):
         with open(json_root, "r") as f:
             self.data = json.load(f)["images"]
         self.image_path_list = []
+        self.image_path_b_list = []
         self.image_discription = {}
         self.max_len = max_len
         self.tokenizer = Tokenizer(llama_token_dir)
@@ -45,7 +46,9 @@ class levirTestDataset(Dataset):
             if each["split"] != "test":
                 continue
             img_path = os.path.join(image_root, each["filepath"], "A", each["filename"])
+            img_path_B = os.path.join(image_root, each["filepath"], "B", each["filename"])
             self.image_path_list.append(img_path)
+            self.image_path_b_list.append(img_path_B)
             sentence = each["sentences"]
             sentence_list = []
             for sent in sentence:
@@ -61,7 +64,13 @@ class levirTestDataset(Dataset):
         img = cv2.imread(img_path)
         img = Image.fromarray(img)
         img = self.img_preprocess(img)
-        format_instruction = "Generate caption of this image"
+
+        img_path_B = self.image_path_b_list[index]
+        img_B = cv2.imread(img_path_B)
+        img_B = Image.fromarray(img_B)
+        img_B = self.img_preprocess(img_B)
+
+        format_instruction = "Describe the difference between the two images"
         input1 = format_prompt(format_instruction, None)
         sentence = self.image_discription[img_path]
         if len(sentence) > 1:
@@ -70,7 +79,7 @@ class levirTestDataset(Dataset):
             sentence = sentence[0]
         input1 = torch.tensor(self.tokenizer.encode(input1, bos=True, eos=False), dtype=torch.int64)
         
-        return input1, img, sentence, img_path
+        return input1, img, img_B, sentence, img_path
 
 
 class levirDataset(Dataset):
@@ -81,6 +90,7 @@ class levirDataset(Dataset):
         with open(json_root, "r") as f:
             self.data = json.load(f)["images"]
         self.image_path_list = []
+        self.image_path_b_list = []
         self.image_discription = {}
         self.max_len = max_len
         self.tokenizer = Tokenizer(llama_token_dir)
@@ -88,7 +98,9 @@ class levirDataset(Dataset):
             if each["split"] != "train":
                 continue
             img_path = os.path.join(image_root, each["filepath"], "A", each["filename"])
+            img_path_B = os.path.join(image_root, each["filepath"], "B", each["filename"])
             self.image_path_list.append(img_path)
+            self.image_path_b_list.append(img_path_B)
             sentence = each["sentences"]
             sentence_list = []
             for sent in sentence:
@@ -100,10 +112,14 @@ class levirDataset(Dataset):
 
     def __getitem__(self, index):
         img_path = self.image_path_list[index]
+        img_path_B = self.image_path_b_list[index]
         img = cv2.imread(img_path)
         img = Image.fromarray(img)
         img = self.img_preprocess(img)
-        format_instruction = "Generate caption of this image"
+        img_B = cv2.imread(img_path_B)
+        img_B = Image.fromarray(img_B)
+        img_B = self.img_preprocess(img_B)
+        format_instruction = "Describe the difference between the two images"
         input1 = format_prompt(format_instruction, None)
         sentence = self.image_discription[img_path]
         if len(sentence) > 1:
@@ -126,4 +142,4 @@ class levirDataset(Dataset):
         labels[~label_mask] = 0
         input2_mask = input2_mask.float()
         label_mask = label_mask.float()
-        return input2, labels, input2_mask, img
+        return input2, labels, input2_mask, img, img_B
